@@ -12,6 +12,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.utils.io import load_yaml, read_jsonl, write_json
+from src.utils.io import write_jsonl
 
 
 def parse_args() -> argparse.Namespace:
@@ -34,6 +35,10 @@ def analysis_output_path(cfg: dict) -> str:
     return str(Path(metrics_path).with_name(Path(metrics_path).stem + "_analysis.json"))
 
 
+def result_path(filename: str) -> str:
+    return str(PROJECT_ROOT / "outputs" / "results" / filename)
+
+
 def mean_or_none(values: list[int]) -> float | None:
     return sum(values) / len(values) if values else None
 
@@ -49,8 +54,22 @@ def build_analysis(records: list[dict]) -> dict:
     output_tokens = [int(row.get("output_tokens", 0)) for row in records]
     correct_rows = [row for row in records if bool(row.get("is_correct"))]
     incorrect_rows = [row for row in records if not bool(row.get("is_correct"))]
+    correct_nontrivial_rows = [
+        row for row in records if bool(row.get("is_correct")) and int(row.get("output_tokens", 0)) > 20
+    ]
+    answer_only_rows = [
+        row for row in records if bool(row.get("is_correct")) and int(row.get("output_tokens", 0)) <= 5
+    ]
+    overthinking_failure_rows = [
+        row
+        for row in records
+        if int(row.get("output_tokens", 0)) >= 500 and not bool(row.get("is_correct"))
+    ]
     correct_tokens = [int(row.get("output_tokens", 0)) for row in correct_rows]
     incorrect_tokens = [int(row.get("output_tokens", 0)) for row in incorrect_rows]
+    correct_nontrivial_tokens = [int(row.get("output_tokens", 0)) for row in correct_nontrivial_rows]
+    answer_only_tokens = [int(row.get("output_tokens", 0)) for row in answer_only_rows]
+    overthinking_failure_tokens = [int(row.get("output_tokens", 0)) for row in overthinking_failure_rows]
 
     suspicious = []
     for row in records:
@@ -85,6 +104,15 @@ def build_analysis(records: list[dict]) -> dict:
         "correct_samples": correct,
         "incorrect_samples": len(incorrect_rows),
         "accuracy": correct / total if total else 0.0,
+        "avg_tokens_all": mean_or_none(output_tokens),
+        "avg_tokens_correct": mean_or_none(correct_tokens),
+        "avg_tokens_incorrect": mean_or_none(incorrect_tokens),
+        "avg_tokens_correct_nontrivial": mean_or_none(correct_nontrivial_tokens),
+        "avg_tokens_answer_only": mean_or_none(answer_only_tokens),
+        "avg_tokens_overthinking_failures": mean_or_none(overthinking_failure_tokens),
+        "num_answer_only": len(answer_only_rows),
+        "num_nontrivial_correct": len(correct_nontrivial_rows),
+        "num_overthinking_failures": len(overthinking_failure_rows),
         "avg_output_tokens": mean_or_none(output_tokens),
         "median_output_tokens": statistics.median(output_tokens) if output_tokens else None,
         "min_output_tokens": min(output_tokens) if output_tokens else None,
@@ -98,7 +126,34 @@ def build_analysis(records: list[dict]) -> dict:
     }
 
 
-def print_summary(analysis: dict, input_path: str, output_path: str) -> None:
+def build_filtered_groups(records: list[dict]) -> dict[str, list[dict]]:
+    return {
+        "correct_nontrivial": [
+            row for row in records if bool(row.get("is_correct")) and int(row.get("output_tokens", 0)) > 20
+        ],
+        "answer_only": [
+            row for row in records if bool(row.get("is_correct")) and int(row.get("output_tokens", 0)) <= 5
+        ],
+        "overthinking_failures": [
+            row
+            for row in records
+            if int(row.get("output_tokens", 0)) >= 500 or not bool(row.get("is_correct"))
+        ],
+    }
+
+
+def write_filtered_groups(groups: dict[str, list[dict]]) -> dict[str, str]:
+    output_paths = {
+        "correct_nontrivial": result_path("baseline_correct_nontrivial.jsonl"),
+        "answer_only": result_path("baseline_answer_only.jsonl"),
+        "overthinking_failures": result_path("baseline_overthinking_failures.jsonl"),
+    }
+    for name, rows in groups.items():
+        write_jsonl(output_paths[name], rows)
+    return output_paths
+
+
+def print_summary(analysis: dict, input_path: str, output_path: str, filtered_paths: dict[str, str]) -> None:
     print("Baseline Generation Analysis")
     print("=" * 32)
     print(f"Input file: {input_path}")
@@ -107,10 +162,20 @@ def print_summary(analysis: dict, input_path: str, output_path: str) -> None:
     print(f"Total samples: {analysis['total_samples']}")
     print(f"Correct samples: {analysis['correct_samples']}")
     print(f"Incorrect samples: {analysis['incorrect_samples']}")
+    print(f"Nontrivial correct samples: {analysis['num_nontrivial_correct']}")
+    print(f"Answer-only samples: {analysis['num_answer_only']}")
+    print(f"Overthinking failures: {analysis['num_overthinking_failures']}")
     print(f"Accuracy: {analysis['accuracy']:.4f}")
     print()
+    print("Group average output tokens")
+    print(f"  All samples: {analysis['avg_tokens_all']}")
+    print(f"  Correct samples: {analysis['avg_tokens_correct']}")
+    print(f"  Incorrect samples: {analysis['avg_tokens_incorrect']}")
+    print(f"  Correct nontrivial: {analysis['avg_tokens_correct_nontrivial']}")
+    print(f"  Answer-only: {analysis['avg_tokens_answer_only']}")
+    print(f"  Overthinking failures: {analysis['avg_tokens_overthinking_failures']}")
+    print()
     print("Output token length")
-    print(f"  Average: {analysis['avg_output_tokens']}")
     print(f"  Median: {analysis['median_output_tokens']}")
     print(f"  Min: {analysis['min_output_tokens']}")
     print(f"  Max: {analysis['max_output_tokens']}")
@@ -118,8 +183,10 @@ def print_summary(analysis: dict, input_path: str, output_path: str) -> None:
     print(f"  <= 20 tokens: {analysis['num_output_tokens_lte_20']}")
     print(f"  >= 500 tokens: {analysis['num_output_tokens_gte_500']}")
     print()
-    print(f"Avg tokens for correct samples: {analysis['avg_output_tokens_correct']}")
-    print(f"Avg tokens for incorrect samples: {analysis['avg_output_tokens_incorrect']}")
+    print("Filtered files")
+    print(f"  Correct nontrivial: {filtered_paths['correct_nontrivial']}")
+    print(f"  Answer-only: {filtered_paths['answer_only']}")
+    print(f"  Overthinking failures: {filtered_paths['overthinking_failures']}")
     print()
     print(f"Suspicious samples: {len(analysis['suspicious_samples'])}")
     for item in analysis["suspicious_samples"]:
@@ -142,8 +209,10 @@ def main() -> None:
 
     records = read_jsonl(generation_path)
     analysis = build_analysis(records)
+    groups = build_filtered_groups(records)
+    filtered_paths = write_filtered_groups(groups)
     write_json(output_path, analysis)
-    print_summary(analysis, generation_path, output_path)
+    print_summary(analysis, generation_path, output_path, filtered_paths)
 
 
 if __name__ == "__main__":

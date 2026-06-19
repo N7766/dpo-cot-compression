@@ -125,6 +125,28 @@ Expected metric format:
 }
 ```
 
+Analyze generation length distribution and create Stage 2 filtering files:
+
+```bash
+python scripts/04_analyze_generations.py --config configs/baseline.yaml
+```
+
+## Stage 1 Result
+
+Current 100-sample GSM8K baseline result:
+
+- Baseline accuracy: 94.0%
+- Average tokens all samples: 176.49
+- Average tokens correct samples: 96.23
+- Answer-only samples: 18%
+- Overthinking failures: 6%
+
+For Stage 2 DPO preference construction, rejected candidates will be selected from correct nontrivial reasoning outputs, not answer-only outputs or incorrect overthinking outputs. In practice:
+
+- `outputs/results/baseline_correct_nontrivial.jsonl`: candidate rejected responses for DPO.
+- `outputs/results/baseline_answer_only.jsonl`: already compressed correct answers, excluded from rejected DPO data.
+- `outputs/results/baseline_overthinking_failures.jsonl`: long or incorrect failure cases for separate analysis, excluded from DPO preference data for now.
+
 ## Lightweight Sanity Checks
 
 These checks do not load the 8B model:
