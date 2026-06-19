@@ -42,14 +42,6 @@ def build_prompt(question: str) -> str:
     )
 
 
-def build_retry_prompt(question: str) -> str:
-    return (
-        f"Question:\n{question}\n\n"
-        "Solve briefly. End with:\n"
-        "Answer: <number>"
-    )
-
-
 def approximate_token_count(text: str) -> int:
     return len((text or "").split())
 
@@ -213,7 +205,6 @@ def main() -> None:
         try:
             for attempt in range(3):
                 num_retries = attempt
-                prompt = build_prompt(row["question"]) if attempt == 0 else build_retry_prompt(row["question"])
                 prediction = run_hf_api(prompt, model_name, model_cfg, hf_token)
                 if not prediction:
                     print(f"[{idx}/{len(records)}] WARNING: empty API response for sample {row['id']}")
