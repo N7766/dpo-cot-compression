@@ -1,11 +1,13 @@
 # Python
 __pycache__/
+*.pyc
 *.py[cod]
 *.pyo
 *.pyd
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+*.log
 
 # Virtual environments
 .venv/
@@ -26,17 +28,28 @@ env/
 # Hugging Face / model caches
 .cache/
 huggingface/
+/hf_cache/
+/huggingface_cache/
+/model_cache/
 /models/
 /checkpoints/
+*.safetensors
+*.bin
+*.pt
+*.pth
 
 # Project generated data and artifacts
+data/raw/
 data/raw/**
-data/processed/**
-data/preference/**
+data/processed/*.jsonl
+data/preference/*.jsonl
+outputs/checkpoints/
 outputs/checkpoints/**
+outputs/logs/
 outputs/logs/**
-outputs/generations/**
-outputs/results/**
+outputs/generations/*.jsonl
+outputs/results/*.json
+outputs/results/*.jsonl
 
 # Keep empty directory placeholders
 !data/raw/
