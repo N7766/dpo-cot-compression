@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from statistics import mean
 from pathlib import Path
 
@@ -59,6 +60,58 @@ def call_deepinfra(client: OpenAI, model_cfg: dict, prompt: str) -> str:
     return (content or "").strip()
 
 
+def generate_one(sample: dict, model_cfg: dict, base_url: str, api_key: str, max_retries: int) -> dict:
+    client = OpenAI(api_key=api_key, base_url=base_url)
+    prompt = build_prompt(sample["question"])
+    prediction = ""
+    error = None
+
+    for attempt in range(max_retries + 1):
+        try:
+            prediction = call_deepinfra(client, model_cfg, prompt)
+            break
+        except Exception as exc:
+            error = str(exc)
+            if attempt >= max_retries:
+                break
+
+    pred_answer = extract_final_answer(prediction)
+    output_tokens = approximate_token_count(prediction)
+    rejected_tokens = int(sample.get("output_tokens", 0))
+    ratio = compression_ratio(output_tokens, rejected_tokens)
+    is_correct = answers_match(pred_answer, sample.get("gold_answer"))
+
+    result = {
+        "id": sample["id"],
+        "question": sample["question"],
+        "gold_answer": sample.get("gold_answer"),
+        "teacher_model": model_cfg["name"],
+        "prompt": prompt,
+        "prediction": prediction,
+        "pred_answer": pred_answer,
+        "is_correct": is_correct,
+        "output_tokens": output_tokens,
+        "rejected_tokens": rejected_tokens,
+        "compression_ratio_vs_rejected": ratio,
+    }
+    if error and not prediction:
+        result["error"] = error
+    return result
+
+
+def print_result_log(result: dict) -> None:
+    ratio = result["compression_ratio_vs_rejected"]
+    ratio_text = f"{ratio:.4f}" if ratio is not None else "n/a"
+    print(
+        f"[{result['id']}] output_tokens={result['output_tokens']}, "
+        f"rejected_tokens={result['rejected_tokens']}, "
+        f"compression={ratio_text}, "
+        f"pred_answer={result['pred_answer']}, "
+        f"gold_answer={result['gold_answer']}, "
+        f"correct={result['is_correct']}"
+    )
+
+
 def main() -> None:
     args = parse_args()
     cfg = load_yaml(args.config)
@@ -95,67 +148,52 @@ def main() -> None:
     if completed_ids:
         print(f"Found {len(completed_ids)} existing teacher outputs; completed ids will be skipped.")
 
-    client = OpenAI(api_key=api_key, base_url=base_url)
-    max_retries = int(cfg.get("generation", {}).get("max_retries", 2))
+    generation_cfg = cfg.get("generation", {})
+    max_retries = int(generation_cfg.get("max_retries", 2))
+    concurrency = max(1, int(generation_cfg.get("concurrency", 1)))
+    print(f"Concurrency: {concurrency}")
 
     new_results = []
-    attempted = 0
+    pending_samples = []
     for sample in samples:
-        sample_id = sample["id"]
-        if sample_id in completed_ids:
-            print(f"[{sample_id}] skipping existing output")
-            continue
+        if sample["id"] in completed_ids:
+            print(f"[{sample['id']}] skipping existing output")
+        else:
+            pending_samples.append(sample)
+    print(f"Pending samples: {len(pending_samples)}")
 
-        prompt = build_prompt(sample["question"])
-        prediction = ""
-        error = None
-        for attempt in range(max_retries + 1):
-            try:
-                prediction = call_deepinfra(client, model_cfg, prompt)
-                break
-            except Exception as exc:
-                error = str(exc)
-                if attempt >= max_retries:
-                    print(f"[{sample_id}] DeepInfra call failed after {attempt + 1} attempts: {error}")
-                else:
-                    print(f"[{sample_id}] DeepInfra call failed on attempt {attempt + 1}; retrying: {error}")
-
-        pred_answer = extract_final_answer(prediction)
-        output_tokens = approximate_token_count(prediction)
-        rejected_tokens = int(sample.get("output_tokens", 0))
-        ratio = compression_ratio(output_tokens, rejected_tokens)
-        is_correct = answers_match(pred_answer, sample.get("gold_answer"))
-
-        result = {
-            "id": sample_id,
-            "question": sample["question"],
-            "gold_answer": sample.get("gold_answer"),
-            "teacher_model": model_name,
-            "prompt": prompt,
-            "prediction": prediction,
-            "pred_answer": pred_answer,
-            "is_correct": is_correct,
-            "output_tokens": output_tokens,
-            "rejected_tokens": rejected_tokens,
-            "compression_ratio_vs_rejected": ratio,
+    with ThreadPoolExecutor(max_workers=concurrency) as executor:
+        futures = {
+            executor.submit(generate_one, sample, model_cfg, base_url, api_key, max_retries): sample
+            for sample in pending_samples
         }
-        if error and not prediction:
-            result["error"] = error
+        for future in as_completed(futures):
+            sample = futures[future]
+            try:
+                result = future.result()
+            except Exception as exc:
+                prompt = build_prompt(sample["question"])
+                result = {
+                    "id": sample["id"],
+                    "question": sample["question"],
+                    "gold_answer": sample.get("gold_answer"),
+                    "teacher_model": model_name,
+                    "prompt": prompt,
+                    "prediction": "",
+                    "pred_answer": None,
+                    "is_correct": False,
+                    "output_tokens": 0,
+                    "rejected_tokens": int(sample.get("output_tokens", 0)),
+                    "compression_ratio_vs_rejected": None,
+                    "error": str(exc),
+                }
 
-        append_jsonl(output_file, result)
-        completed_ids.add(sample_id)
-        new_results.append(result)
-        attempted += 1
-
-        ratio_text = f"{ratio:.4f}" if ratio is not None else "n/a"
-        print(
-            f"[{sample_id}] output_tokens={output_tokens}, "
-            f"rejected_tokens={rejected_tokens}, "
-            f"compression={ratio_text}, "
-            f"pred_answer={pred_answer}, "
-            f"gold_answer={sample.get('gold_answer')}, "
-            f"correct={is_correct}"
-        )
+            append_jsonl(output_file, result)
+            completed_ids.add(result["id"])
+            new_results.append(result)
+            if result.get("error") and not result.get("prediction"):
+                print(f"[{result['id']}] DeepInfra call failed: {result['error']}")
+            print_result_log(result)
 
     correct_count = sum(bool(row["is_correct"]) for row in new_results)
     avg_output_tokens = mean(row["output_tokens"] for row in new_results) if new_results else 0.0
@@ -165,7 +203,7 @@ def main() -> None:
     print()
     print("DeepInfra teacher smoke-test summary")
     print("=" * 40)
-    print(f"Total attempted: {attempted}")
+    print(f"Total attempted: {len(new_results)}")
     print(f"Correct count: {correct_count}")
     print(f"Avg output tokens: {avg_output_tokens}")
     print(f"Avg compression ratio vs rejected: {avg_ratio}")
