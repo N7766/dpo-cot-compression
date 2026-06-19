@@ -19,7 +19,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.evaluation.answer_extraction import answers_match, extract_final_answer
-from src.utils.io import load_yaml, read_jsonl, write_jsonl
+from src.utils.io import append_jsonl, load_yaml, read_jsonl
 
 
 THINK_RE = re.compile(r"<think>(.*?)</think>", flags=re.IGNORECASE | re.DOTALL)
@@ -186,8 +186,20 @@ def main() -> None:
     else:
         raise ValueError("Stage 1 baseline inference supports only backend: hf_api")
 
-    outputs = []
+    existing_outputs = read_jsonl(output_file)
+    completed_ids = {row.get("id") for row in existing_outputs if row.get("id")}
+    if completed_ids:
+        print(f"Found {len(completed_ids)} existing generations; completed ids will be skipped.")
+
+    pending_records = [row for row in records if row.get("id") not in completed_ids]
+    print(f"Total requested samples: {len(records)}")
+    print(f"Pending samples: {len(pending_records)}")
+
     for idx, row in enumerate(records, start=1):
+        if row.get("id") in completed_ids:
+            print(f"[{idx}/{len(records)}] Skipping existing sample {row['id']}")
+            continue
+
         prompt = build_prompt(row["question"])
         print(f"[{idx}/{len(records)}] Running sample {row['id']}")
 
@@ -216,7 +228,9 @@ def main() -> None:
         except Exception as exc:
             error = str(exc)
             print(f"API call failed. model={model_name} sample_id={row['id']} error={error}")
-            outputs.append(make_error_record(row, prompt, error, num_retries))
+            error_record = make_error_record(row, prompt, error, num_retries)
+            append_jsonl(output_file, error_record)
+            completed_ids.add(row["id"])
             continue
 
         output_tokens = approximate_token_count(prediction)
@@ -237,7 +251,8 @@ def main() -> None:
             "is_complete": is_complete,
             "error": error,
         }
-        outputs.append(result)
+        append_jsonl(output_file, result)
+        completed_ids.add(row["id"])
         print(
             f"[{idx}/{len(records)}] {row['id']} "
             f"output_tokens={output_tokens} "
@@ -247,8 +262,7 @@ def main() -> None:
             f"correct={is_correct}"
         )
 
-    write_jsonl(output_file, outputs)
-    print(f"Saved generations to {output_file}")
+    print(f"Saved/resumed generations in {output_file}")
 
 
 if __name__ == "__main__":

@@ -11,7 +11,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.data.gsm8k import load_gsm8k_split, process_gsm8k_examples
-from src.utils.io import load_yaml, write_jsonl
+from src.utils.io import load_yaml, read_jsonl, write_jsonl
 
 
 def parse_args() -> argparse.Namespace:
@@ -34,6 +34,21 @@ def main() -> None:
     )
     output_path = cfg.get("paths", {}).get("input_file", data_cfg.get("processed_path"))
     records = process_gsm8k_examples(dataset, split=data_cfg.get("split", "test"), max_samples=max_samples)
+    existing_records = read_jsonl(output_path)
+    existing_by_id = {row.get("id"): row for row in existing_records}
+    if existing_by_id:
+        merged_records = []
+        num_new = 0
+        for record in records:
+            existing = existing_by_id.get(record["id"])
+            if existing is not None:
+                merged_records.append(existing)
+            else:
+                merged_records.append(record)
+                num_new += 1
+        records = merged_records
+        print(f"Found {len(existing_records)} existing processed examples; preserving them and adding {num_new} new examples.")
+
     write_jsonl(output_path, records)
     print(f"Saved {len(records)} GSM8K examples to {output_path}")
 

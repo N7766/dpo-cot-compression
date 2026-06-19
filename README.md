@@ -54,6 +54,8 @@ Run baseline inference:
 python scripts/02_baseline_inference.py --config configs/baseline.yaml --max_samples 100
 ```
 
+Inference is append-only and resume-safe. If `outputs/generations/baseline_qwen3_8b_gsm8k.jsonl` already contains completed sample ids, the script skips those ids and appends only new results. This allows larger runs to continue from the existing 100-sample baseline without overwriting it.
+
 Evaluate saved generations:
 
 ```bash
