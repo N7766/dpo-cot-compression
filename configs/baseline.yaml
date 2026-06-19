@@ -1,0 +1,18 @@
+model:
+  backend: hf_api
+  name: Qwen/Qwen3-8B
+  max_new_tokens: 2048
+  temperature: 0.0
+  top_p: 1.0
+
+data:
+  dataset_name: openai/gsm8k
+  dataset_config: main
+  split: test
+  max_samples: 100
+  processed_path: data/processed/gsm8k_test.jsonl
+
+paths:
+  input_file: data/processed/gsm8k_test.jsonl
+  generation_output: outputs/generations/baseline_qwen3_8b_gsm8k.jsonl
+  metrics_output: outputs/results/baseline_qwen3_8b_gsm8k_metrics.json

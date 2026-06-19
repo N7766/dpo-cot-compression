@@ -1,0 +1,60 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Secrets
+.env
+.env.*
+*.pem
+*.key
+
+# Hugging Face / model caches
+.cache/
+huggingface/
+/models/
+/checkpoints/
+
+# Project generated data and artifacts
+data/raw/**
+data/processed/**
+data/preference/**
+outputs/checkpoints/**
+outputs/logs/**
+outputs/generations/**
+outputs/results/**
+
+# Keep empty directory placeholders
+!data/raw/
+!data/raw/.gitkeep
+!data/raw/gsm8k/
+!data/raw/gsm8k/.gitkeep
+!data/processed/
+!data/processed/.gitkeep
+!data/preference/
+!data/preference/.gitkeep
+!outputs/checkpoints/
+!outputs/checkpoints/.gitkeep
+!outputs/logs/
+!outputs/logs/.gitkeep
+!outputs/generations/
+!outputs/generations/.gitkeep
+!outputs/results/
+!outputs/results/.gitkeep
+
+# Notebook checkpoints
+.ipynb_checkpoints/
