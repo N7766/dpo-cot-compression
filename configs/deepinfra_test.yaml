@@ -1,0 +1,14 @@
+model:
+  backend: deepinfra
+  name: Qwen/Qwen3-8B
+  base_url: https://api.deepinfra.com/v1/openai
+  max_new_tokens: 512
+  temperature: 0.0
+  top_p: 1.0
+
+paths:
+  input_file: outputs/results/baseline_correct_nontrivial.jsonl
+  output_file: outputs/generations/deepinfra_teacher_test.jsonl
+
+generation:
+  max_retries: 2
