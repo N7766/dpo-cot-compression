@@ -7,8 +7,8 @@ model:
   top_p: 1.0
 
 paths:
-  input_file: outputs/results/baseline_correct_nontrivial.jsonl
-  output_file: outputs/generations/deepinfra_teacher_test.jsonl
+  input_file: outputs/results/qwen3_8b_gsm8k_train_correct_nontrivial.jsonl
+  output_file: outputs/generations/deepinfra_glm52_train_teacher_test.jsonl
 
 generation:
   max_retries: 2

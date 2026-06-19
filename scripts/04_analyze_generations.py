@@ -142,12 +142,26 @@ def build_filtered_groups(records: list[dict]) -> dict[str, list[dict]]:
     }
 
 
-def write_filtered_groups(groups: dict[str, list[dict]]) -> dict[str, str]:
-    output_paths = {
-        "correct_nontrivial": result_path("baseline_correct_nontrivial.jsonl"),
-        "answer_only": result_path("baseline_answer_only.jsonl"),
-        "overthinking_failures": result_path("baseline_overthinking_failures.jsonl"),
+def filtered_output_paths(cfg: dict) -> dict[str, str]:
+    paths = cfg.get("paths", {})
+    return {
+        "correct_nontrivial": paths.get(
+            "correct_nontrivial_output",
+            result_path("baseline_correct_nontrivial.jsonl"),
+        ),
+        "answer_only": paths.get(
+            "answer_only_output",
+            result_path("baseline_answer_only.jsonl"),
+        ),
+        "overthinking_failures": paths.get(
+            "overthinking_failures_output",
+            result_path("baseline_overthinking_failures.jsonl"),
+        ),
     }
+
+
+def write_filtered_groups(groups: dict[str, list[dict]], cfg: dict) -> dict[str, str]:
+    output_paths = filtered_output_paths(cfg)
     for name, rows in groups.items():
         write_jsonl(output_paths[name], rows)
     return output_paths
@@ -210,7 +224,7 @@ def main() -> None:
     records = read_jsonl(generation_path)
     analysis = build_analysis(records)
     groups = build_filtered_groups(records)
-    filtered_paths = write_filtered_groups(groups)
+    filtered_paths = write_filtered_groups(groups, cfg)
     write_json(output_path, analysis)
     print_summary(analysis, generation_path, output_path, filtered_paths)
 

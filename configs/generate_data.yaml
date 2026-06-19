@@ -16,3 +16,6 @@ paths:
   input_file: data/processed/gsm8k_train.jsonl
   generation_output: outputs/generations/qwen3_8b_gsm8k_train_rejected_candidates.jsonl
   metrics_output: outputs/results/qwen3_8b_gsm8k_train_rejected_candidates_metrics.json
+  correct_nontrivial_output: outputs/results/qwen3_8b_gsm8k_train_correct_nontrivial.jsonl
+  answer_only_output: outputs/results/qwen3_8b_gsm8k_train_answer_only.jsonl
+  overthinking_failures_output: outputs/results/qwen3_8b_gsm8k_train_overthinking_failures.jsonl
