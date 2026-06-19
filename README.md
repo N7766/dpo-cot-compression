@@ -98,6 +98,37 @@ Generated Stage 1 files are intentionally ignored by git:
 - `outputs/results/baseline_answer_only.jsonl`
 - `outputs/results/baseline_overthinking_failures.jsonl`
 
+## Stage 2 Preparation: Rejected Candidates
+
+Stage 2 preference construction should use GSM8K train data, not the Stage 1 test baseline. The Qwen3 train generations will be used as candidate rejected responses; chosen responses will be generated later by a teacher model.
+
+The rejected-candidate config is:
+
+```text
+configs/generate_data.yaml
+```
+
+It uses:
+
+- split: `train`
+- max samples: `3000`
+- processed input: `data/processed/gsm8k_train.jsonl`
+- generation output: `outputs/generations/qwen3_8b_gsm8k_train_rejected_candidates.jsonl`
+
+Prepare the train subset:
+
+```bash
+python scripts/01_download_data.py --config configs/generate_data.yaml
+```
+
+Generate Qwen3 rejected candidates with resume-safe append behavior:
+
+```bash
+python scripts/02_baseline_inference.py --config configs/generate_data.yaml
+```
+
+This does not start DPO training and does not generate teacher chosen responses.
+
 ## Repository Layout
 
 ```text

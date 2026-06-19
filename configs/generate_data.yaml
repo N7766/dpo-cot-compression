@@ -1,0 +1,18 @@
+model:
+  backend: hf_api
+  name: Qwen/Qwen3-8B
+  max_new_tokens: 2048
+  temperature: 0.0
+  top_p: 1.0
+
+data:
+  dataset_name: openai/gsm8k
+  dataset_config: main
+  split: train
+  max_samples: 3000
+  processed_path: data/processed/gsm8k_train.jsonl
+
+paths:
+  input_file: data/processed/gsm8k_train.jsonl
+  generation_output: outputs/generations/qwen3_8b_gsm8k_train_rejected_candidates.jsonl
+  metrics_output: outputs/results/qwen3_8b_gsm8k_train_rejected_candidates_metrics.json
