@@ -205,7 +205,22 @@ def main() -> None:
         try:
             for attempt in range(3):
                 num_retries = attempt
-                prediction = run_hf_api(prompt, model_name, model_cfg, hf_token)
+                try:
+                    prediction = run_hf_api(prompt, model_name, model_cfg, hf_token)
+                except Exception as exc:
+                    error = str(exc)
+                    if attempt < 2:
+                        print(
+                            f"[{idx}/{len(records)}] API call failed for {row['id']} "
+                            f"on attempt {attempt + 1}; retrying: {error}"
+                        )
+                        continue
+                    print(
+                        f"[{idx}/{len(records)}] API call failed for {row['id']} "
+                        f"after {attempt + 1} attempts; not writing this sample so it can be retried later: {error}"
+                    )
+                    break
+
                 if not prediction:
                     print(f"[{idx}/{len(records)}] WARNING: empty API response for sample {row['id']}")
                 answer_tag, is_complete, pred_answer = check_completion(prediction)
@@ -218,10 +233,10 @@ def main() -> None:
                     )
         except Exception as exc:
             error = str(exc)
-            print(f"API call failed. model={model_name} sample_id={row['id']} error={error}")
-            error_record = make_error_record(row, prompt, error, num_retries)
-            append_jsonl(output_file, error_record)
-            completed_ids.add(row["id"])
+            print(f"Unexpected failure. model={model_name} sample_id={row['id']} error={error}")
+            continue
+
+        if error and not prediction:
             continue
 
         output_tokens = approximate_token_count(prediction)

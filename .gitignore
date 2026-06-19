@@ -47,7 +47,9 @@ outputs/checkpoints/
 outputs/checkpoints/**
 outputs/logs/
 outputs/logs/**
+outputs/generations/*
 outputs/generations/*.jsonl
+outputs/results/*
 outputs/results/*.json
 outputs/results/*.jsonl
 
