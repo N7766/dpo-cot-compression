@@ -155,6 +155,19 @@ outputs/generations/deepinfra_glm52_teacher_smoke_test.jsonl
 
 For chosen generation, use `--max_samples N` only for staged partial runs; omitting it processes all available input samples.
 
+Build DPO preference pairs after rejected and chosen files are ready:
+
+```bash
+python scripts/03_build_preference_data.py --config configs/train_dpo.yaml
+```
+
+This writes:
+
+```text
+data/preference/dpo_train.jsonl
+outputs/results/dpo_train_build_summary.json
+```
+
 ## Repository Layout
 
 ```text
