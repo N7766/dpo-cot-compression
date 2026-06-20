@@ -12,6 +12,8 @@ import argparse
 import os
 import re
 import sys
+import time
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from pathlib import Path
 from typing import Any
 
@@ -150,6 +152,89 @@ def make_error_record(row: dict, prompt: str, error: str, num_retries: int) -> d
     }
 
 
+def generate_one(
+    row: dict,
+    idx: int,
+    total: int,
+    model_name: str,
+    model_cfg: dict,
+    hf_token: str,
+    max_retries: int,
+    retry_sleep_seconds: float,
+) -> tuple[dict | None, bool]:
+    prompt = build_prompt(row["question"])
+    prediction = ""
+    pred_answer = None
+    answer_tag = False
+    is_complete = False
+    error = None
+    num_retries = 0
+
+    for attempt in range(max_retries + 1):
+        num_retries = attempt
+        try:
+            prediction = run_hf_api(prompt, model_name, model_cfg, hf_token)
+        except Exception as exc:
+            error = str(exc)
+            if attempt < max_retries:
+                print(
+                    f"[{idx}/{total}] API call failed for {row['id']} "
+                    f"on attempt {attempt + 1}; retrying: {error}"
+                )
+                time.sleep(retry_sleep_seconds * (2**attempt))
+                continue
+            print(
+                f"[{idx}/{total}] API call failed for {row['id']} "
+                f"after {attempt + 1} attempts; not writing this sample so it can be retried later: {error}"
+            )
+            return None, True
+
+        if not prediction:
+            print(f"[{idx}/{total}] WARNING: empty API response for sample {row['id']}")
+        answer_tag, is_complete, pred_answer = check_completion(prediction)
+        if is_complete:
+            break
+        if attempt < max_retries:
+            print(
+                f"[{idx}/{total}] incomplete output for {row['id']} "
+                f"(has_answer_tag={answer_tag}, pred_answer={pred_answer}); retrying"
+            )
+            time.sleep(retry_sleep_seconds * (2**attempt))
+
+    output_tokens = approximate_token_count(prediction)
+    reasoning_tokens = count_reasoning_tokens_approx(prediction, output_tokens)
+    is_correct = is_complete and answers_match(pred_answer, row["gold_answer"])
+    return (
+        {
+            "id": row["id"],
+            "question": row["question"],
+            "gold_answer": row["gold_answer"],
+            "prompt": prompt,
+            "prediction": prediction,
+            "pred_answer": pred_answer,
+            "is_correct": is_correct,
+            "output_tokens": output_tokens,
+            "reasoning_tokens": reasoning_tokens,
+            "has_answer_tag": answer_tag,
+            "num_retries": num_retries,
+            "is_complete": is_complete,
+            "error": error,
+        },
+        False,
+    )
+
+
+def print_result_log(result: dict, idx: int, total: int) -> None:
+    print(
+        f"[{idx}/{total}] {result['id']} "
+        f"output_tokens={result['output_tokens']} "
+        f"has_answer_tag={result['has_answer_tag']} "
+        f"pred_answer={result['pred_answer']} "
+        f"gold_answer={result['gold_answer']} "
+        f"correct={result['is_correct']}"
+    )
+
+
 def main() -> None:
     args = parse_args()
     cfg = load_yaml(args.config)
@@ -187,86 +272,78 @@ def main() -> None:
     print(f"Total requested samples: {len(records)}")
     print(f"Pending samples: {len(pending_records)}")
 
-    for idx, row in enumerate(records, start=1):
-        if row.get("id") in completed_ids:
-            print(f"[{idx}/{len(records)}] Skipping existing sample {row['id']}")
-            continue
+    generation_cfg = cfg.get("generation", {})
+    max_retries = int(generation_cfg.get("max_retries", 2))
+    concurrency = max(1, int(generation_cfg.get("concurrency", 1)))
+    retry_sleep_seconds = float(generation_cfg.get("retry_sleep_seconds", 2))
+    max_consecutive_api_failures = int(generation_cfg.get("max_consecutive_api_failures", 20))
+    print(f"Concurrency: {concurrency}")
+    print(f"Max retries: {max_retries}")
+    print(f"Max consecutive API failures before stopping: {max_consecutive_api_failures}")
 
-        prompt = build_prompt(row["question"])
-        print(f"[{idx}/{len(records)}] Running sample {row['id']}")
+    index_by_id = {row["id"]: idx for idx, row in enumerate(records, start=1)}
+    pending_iter = iter(pending_records)
+    consecutive_api_failures = 0
 
-        prediction = ""
-        pred_answer = None
-        answer_tag = False
-        is_complete = False
-        error = None
-        num_retries = 0
-
+    def submit_next(executor: ThreadPoolExecutor, futures: dict) -> bool:
         try:
-            for attempt in range(3):
-                num_retries = attempt
+            row = next(pending_iter)
+        except StopIteration:
+            return False
+        idx = index_by_id[row["id"]]
+        print(f"[{idx}/{len(records)}] Running sample {row['id']}")
+        futures[
+            executor.submit(
+                generate_one,
+                row,
+                idx,
+                len(records),
+                model_name,
+                model_cfg,
+                hf_token,
+                max_retries,
+                retry_sleep_seconds,
+            )
+        ] = (row, idx)
+        return True
+
+    with ThreadPoolExecutor(max_workers=concurrency) as executor:
+        futures = {}
+        for _ in range(concurrency):
+            if not submit_next(executor, futures):
+                break
+
+        while futures:
+            done, _ = wait(futures, return_when=FIRST_COMPLETED)
+            for future in done:
+                row, idx = futures.pop(future)
                 try:
-                    prediction = run_hf_api(prompt, model_name, model_cfg, hf_token)
+                    result, api_failed = future.result()
                 except Exception as exc:
-                    error = str(exc)
-                    if attempt < 2:
+                    print(f"Unexpected failure. model={model_name} sample_id={row['id']} error={exc}")
+                    result, api_failed = None, True
+
+                if api_failed:
+                    consecutive_api_failures += 1
+                    if consecutive_api_failures >= max_consecutive_api_failures:
                         print(
-                            f"[{idx}/{len(records)}] API call failed for {row['id']} "
-                            f"on attempt {attempt + 1}; retrying: {error}"
+                            f"Stopping early after {consecutive_api_failures} consecutive API failures. "
+                            "Already-written samples are preserved; rerun later to resume."
                         )
-                        continue
-                    print(
-                        f"[{idx}/{len(records)}] API call failed for {row['id']} "
-                        f"after {attempt + 1} attempts; not writing this sample so it can be retried later: {error}"
-                    )
-                    break
+                        for pending_future in futures:
+                            pending_future.cancel()
+                        futures.clear()
+                        break
+                else:
+                    consecutive_api_failures = 0
 
-                if not prediction:
-                    print(f"[{idx}/{len(records)}] WARNING: empty API response for sample {row['id']}")
-                answer_tag, is_complete, pred_answer = check_completion(prediction)
-                if is_complete:
-                    break
-                if attempt < 2:
-                    print(
-                        f"[{idx}/{len(records)}] incomplete output for {row['id']} "
-                        f"(has_answer_tag={answer_tag}, pred_answer={pred_answer}); retrying"
-                    )
-        except Exception as exc:
-            error = str(exc)
-            print(f"Unexpected failure. model={model_name} sample_id={row['id']} error={error}")
-            continue
+                if result is not None:
+                    append_jsonl(output_file, result)
+                    completed_ids.add(result["id"])
+                    print_result_log(result, idx, len(records))
 
-        if error and not prediction:
-            continue
-
-        output_tokens = approximate_token_count(prediction)
-        reasoning_tokens = count_reasoning_tokens_approx(prediction, output_tokens)
-        is_correct = is_complete and answers_match(pred_answer, row["gold_answer"])
-        result = {
-            "id": row["id"],
-            "question": row["question"],
-            "gold_answer": row["gold_answer"],
-            "prompt": prompt,
-            "prediction": prediction,
-            "pred_answer": pred_answer,
-            "is_correct": is_correct,
-            "output_tokens": output_tokens,
-            "reasoning_tokens": reasoning_tokens,
-            "has_answer_tag": answer_tag,
-            "num_retries": num_retries,
-            "is_complete": is_complete,
-            "error": error,
-        }
-        append_jsonl(output_file, result)
-        completed_ids.add(row["id"])
-        print(
-            f"[{idx}/{len(records)}] {row['id']} "
-            f"output_tokens={output_tokens} "
-            f"has_answer_tag={answer_tag} "
-            f"pred_answer={pred_answer} "
-            f"gold_answer={row['gold_answer']} "
-            f"correct={is_correct}"
-        )
+                if consecutive_api_failures < max_consecutive_api_failures:
+                    submit_next(executor, futures)
 
     print(f"Saved/resumed generations in {output_file}")
 
