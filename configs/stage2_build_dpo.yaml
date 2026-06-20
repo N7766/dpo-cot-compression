@@ -1,8 +1,8 @@
 paths:
   rejected_file: outputs/results/qwen3_8b_gsm8k_train_correct_nontrivial.jsonl
   chosen_file: outputs/generations/glm52_gsm8k_train_chosen.jsonl
-  output_file: data/preference/dpo_train.jsonl
-  summary_file: outputs/results/dpo_train_build_summary.json
+  output_file: data/preference/gsm8k_qwen3_rejected_glm52_chosen_train.jsonl
+  summary_file: outputs/results/gsm8k_qwen3_glm52_dpo_build_summary.json
 
 filters:
   require_rejected_correct: true

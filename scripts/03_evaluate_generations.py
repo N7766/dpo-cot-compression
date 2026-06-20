@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Evaluate saved baseline generations."""
+"""Evaluate saved GSM8K generation files."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from src.utils.io import load_yaml, read_jsonl, write_json, write_jsonl
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default="configs/baseline.yaml")
+    parser.add_argument("--config", default="configs/stage1_baseline.yaml")
     parser.add_argument("--self_test", action="store_true", help="Run lightweight sanity checks.")
     return parser.parse_args()
 

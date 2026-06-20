@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Download and preprocess GSM8K for Stage 1 baseline evaluation."""
+"""Download and preprocess GSM8K for baseline or preference-data generation."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from src.utils.io import load_yaml, read_jsonl, write_jsonl
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default="configs/baseline.yaml")
+    parser.add_argument("--config", default="configs/stage1_baseline.yaml")
     parser.add_argument("--max_samples", type=int, default=None)
     return parser.parse_args()
 

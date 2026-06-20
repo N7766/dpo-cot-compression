@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Run Stage 1 baseline inference on processed GSM8K samples.
+"""Generate Qwen3 GSM8K outputs for baseline or rejected-candidate data.
 
 This script uses the Hugging Face remote inference API only. It never loads
 transformers models or tokenizers locally, so it should not download model
@@ -29,7 +29,7 @@ THINK_RE = re.compile(r"<think>(.*?)</think>", flags=re.IGNORECASE | re.DOTALL)
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default="configs/baseline.yaml")
+    parser.add_argument("--config", default="configs/stage1_baseline.yaml")
     parser.add_argument("--max_samples", type=int, default=None, help="Override config for smoke tests.")
     return parser.parse_args()
 

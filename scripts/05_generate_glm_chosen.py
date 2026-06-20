@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """Generate DeepInfra teacher responses for future DPO chosen data.
 
-Use configs/deepinfra_test.yaml with --max_samples for smoke tests, and
-configs/generate_chosen.yaml for larger chosen-response generation.
+Use configs/smoke_deepinfra_teacher.yaml with --max_samples for smoke tests, and
+configs/stage2_generate_chosen.yaml for larger chosen-response generation.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ from src.utils.io import append_jsonl, load_yaml, read_jsonl
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default="configs/deepinfra_test.yaml")
+    parser.add_argument("--config", default="configs/smoke_deepinfra_teacher.yaml")
     parser.add_argument("--max_samples", type=int, default=None, help="Limit input samples for smoke tests. Omit for all.")
     return parser.parse_args()
 

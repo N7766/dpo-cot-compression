@@ -17,7 +17,7 @@ from src.utils.io import load_yaml, read_jsonl, write_json, write_jsonl
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default="configs/train_dpo.yaml")
+    parser.add_argument("--config", default="configs/stage2_build_dpo.yaml")
     return parser.parse_args()
 
 

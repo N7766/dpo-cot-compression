@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Analyze baseline generation length distribution."""
+"""Analyze generations and filter rejected-candidate groups."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from src.utils.io import write_jsonl
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default="configs/baseline.yaml")
+    parser.add_argument("--config", default="configs/stage1_baseline.yaml")
     return parser.parse_args()
 
 

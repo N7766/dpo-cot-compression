@@ -45,13 +45,13 @@ The token is read from the `HF_TOKEN` environment variable. Do not put tokens in
 Download and preprocess GSM8K:
 
 ```bash
-python scripts/01_download_data.py --config configs/baseline.yaml
+python scripts/01_prepare_gsm8k.py --config configs/stage1_baseline.yaml
 ```
 
 Run baseline inference:
 
 ```bash
-python scripts/02_baseline_inference.py --config configs/baseline.yaml --max_samples 100
+python scripts/02_generate_qwen_rejected.py --config configs/stage1_baseline.yaml --max_samples 100
 ```
 
 Inference is append-only and resume-safe. If `outputs/generations/baseline_qwen3_8b_gsm8k.jsonl` already contains completed sample ids, the script skips those ids and appends only new results. This allows larger runs to continue from the existing 100-sample baseline without overwriting it.
@@ -59,13 +59,13 @@ Inference is append-only and resume-safe. If `outputs/generations/baseline_qwen3
 Evaluate saved generations:
 
 ```bash
-python scripts/03_baseline_eval.py --config configs/baseline.yaml
+python scripts/03_evaluate_generations.py --config configs/stage1_baseline.yaml
 ```
 
 Analyze generation lengths and create filtering files:
 
 ```bash
-python scripts/04_analyze_generations.py --config configs/baseline.yaml
+python scripts/04_filter_rejected_candidates.py --config configs/stage1_baseline.yaml
 ```
 
 ## Stage 1 Results
@@ -102,29 +102,40 @@ Generated Stage 1 files are intentionally ignored by git:
 
 Stage 2 preference construction should use GSM8K train data, not the Stage 1 test baseline. The Qwen3 train generations will be used as candidate rejected responses; chosen responses will be generated later by a teacher model.
 
+## Workflow Reference
+
+| Step | Purpose | Script | Config |
+| --- | --- | --- | --- |
+| 1 | Prepare GSM8K JSONL | `scripts/01_prepare_gsm8k.py` | `configs/stage1_baseline.yaml` or `configs/stage2_generate_rejected.yaml` |
+| 2 | Generate Qwen3 outputs/rejected candidates | `scripts/02_generate_qwen_rejected.py` | `configs/stage1_baseline.yaml` or `configs/stage2_generate_rejected.yaml` |
+| 3 | Evaluate generations | `scripts/03_evaluate_generations.py` | matching generation config |
+| 4 | Filter correct nontrivial rejected candidates | `scripts/04_filter_rejected_candidates.py` | matching generation config |
+| 5 | Generate GLM-5.2 chosen responses | `scripts/05_generate_glm_chosen.py` | `configs/stage2_generate_chosen.yaml` |
+| 6 | Build DPO preference dataset | `scripts/06_build_dpo_dataset.py` | `configs/stage2_build_dpo.yaml` |
+
 The rejected-candidate config is:
 
 ```text
-configs/generate_data.yaml
+configs/stage2_generate_rejected.yaml
 ```
 
 It uses:
 
 - split: `train`
-- max samples: `3000`
+- max samples: `7000`
 - processed input: `data/processed/gsm8k_train.jsonl`
 - generation output: `outputs/generations/qwen3_8b_gsm8k_train_rejected_candidates.jsonl`
 
 Prepare the train subset:
 
 ```bash
-python scripts/01_download_data.py --config configs/generate_data.yaml
+python scripts/01_prepare_gsm8k.py --config configs/stage2_generate_rejected.yaml
 ```
 
 Generate Qwen3 rejected candidates with resume-safe append behavior:
 
 ```bash
-python scripts/02_baseline_inference.py --config configs/generate_data.yaml
+python scripts/02_generate_qwen_rejected.py --config configs/stage2_generate_rejected.yaml
 ```
 
 This does not start DPO training and does not generate teacher chosen responses.
@@ -132,7 +143,7 @@ This does not start DPO training and does not generate teacher chosen responses.
 Generate GLM-5.2 teacher chosen responses after the train correct-nontrivial file exists:
 
 ```bash
-python scripts/06_deepinfra_teacher_test.py --config configs/generate_chosen.yaml
+python scripts/05_generate_glm_chosen.py --config configs/stage2_generate_chosen.yaml
 ```
 
 The production chosen output is:
@@ -144,7 +155,7 @@ outputs/generations/glm52_gsm8k_train_chosen.jsonl
 For a small DeepInfra smoke test, use:
 
 ```bash
-python scripts/06_deepinfra_teacher_test.py --config configs/deepinfra_test.yaml --max_samples 3
+python scripts/05_generate_glm_chosen.py --config configs/smoke_deepinfra_teacher.yaml --max_samples 3
 ```
 
 Smoke-test output is kept separate:
@@ -158,14 +169,14 @@ For chosen generation, use `--max_samples N` only for staged partial runs; omitt
 Build DPO preference pairs after rejected and chosen files are ready:
 
 ```bash
-python scripts/03_build_preference_data.py --config configs/train_dpo.yaml
+python scripts/06_build_dpo_dataset.py --config configs/stage2_build_dpo.yaml
 ```
 
 This writes:
 
 ```text
-data/preference/dpo_train.jsonl
-outputs/results/dpo_train_build_summary.json
+data/preference/gsm8k_qwen3_rejected_glm52_chosen_train.jsonl
+outputs/results/gsm8k_qwen3_glm52_dpo_build_summary.json
 ```
 
 ## Repository Layout
@@ -202,7 +213,7 @@ No project Python script deletes Hugging Face cache files automatically.
 These checks do not load the 8B model:
 
 ```bash
-python scripts/03_baseline_eval.py --self_test
+python scripts/03_evaluate_generations.py --self_test
 ```
 
 They test GSM8K/model answer extraction and JSONL reading/writing.
