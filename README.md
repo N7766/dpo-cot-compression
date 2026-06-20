@@ -226,6 +226,19 @@ Planned training outputs remain ignored by git under:
 - `outputs/results/stage2_lora_dpo/`
 - `outputs/results/stage2_full_dpo/`
 
+Initial Stage 2 commands:
+
+```bash
+python scripts/07_train_lora_dpo.py --config configs/stage2_lora_dpo.yaml --dry_run
+python scripts/08_train_full_dpo.py --config configs/stage2_full_dpo.yaml --dry_run
+```
+
+Full DPO is expected to run with a distributed launcher, for example:
+
+```bash
+torchrun --nproc_per_node=4 scripts/08_train_full_dpo.py --config configs/stage2_full_dpo.yaml
+```
+
 ## Repository Layout
 
 ```text

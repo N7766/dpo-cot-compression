@@ -131,7 +131,7 @@ Suggested Stage 2 scripts:
 | `scripts/10_eval_stage2_model.py` | Evaluate trained model on held-out GSM8K |
 | `scripts/11_upload_model.py` | Optional Hugging Face upload after review |
 
-These scripts are not implemented yet. Stage 2 should begin with `07_train_lora_dpo.py`.
+Stage 2 should begin with `07_train_lora_dpo.py`.
 
 ## 7. Planned Training Pipeline
 
@@ -148,6 +148,16 @@ Stage 1 DPO train/val JSONL
   -> held-out GSM8K evaluation
 ```
 
+LoRA+DPO initial design:
+
+```text
+LoRA rank: r=8
+LoRA alpha: 16
+Reference policy: handled by TRL/PEFT without keeping a second full model copy
+Gradient checkpointing: enabled
+Gradient accumulation: enabled
+```
+
 Full DPO later:
 
 ```text
@@ -157,6 +167,16 @@ Stage 1 DPO train/val JSONL
   -> save full checkpoints
   -> held-out GSM8K evaluation
   -> compare against LoRA+DPO
+```
+
+Full DPO memory plan:
+
+```text
+FSDP: full_shard auto_wrap
+Gradient checkpointing: enabled
+Gradient accumulation: enabled
+Reference log-probs: precomputed before policy updates
+Reference model during training: not kept resident after precomputation
 ```
 
 ## 8. Remote SSH Workflow
@@ -186,6 +206,19 @@ Then run LoRA+DPO training once the script exists:
 
 ```bash
 python scripts/07_train_lora_dpo.py --config configs/stage2_lora_dpo.yaml
+```
+
+For a no-model dry run:
+
+```bash
+python scripts/07_train_lora_dpo.py --config configs/stage2_lora_dpo.yaml --dry_run
+python scripts/08_train_full_dpo.py --config configs/stage2_full_dpo.yaml --dry_run
+```
+
+For full DPO, use a distributed launcher. Example:
+
+```bash
+torchrun --nproc_per_node=4 scripts/08_train_full_dpo.py --config configs/stage2_full_dpo.yaml
 ```
 
 ## 9. Evaluation Policy

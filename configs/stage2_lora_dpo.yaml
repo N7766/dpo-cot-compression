@@ -20,8 +20,8 @@ data:
   max_length: 2048
 
 lora:
-  r: 16
-  alpha: 32
+  r: 8
+  alpha: 16
   dropout: 0.05
   target_modules:
     - q_proj
@@ -35,6 +35,8 @@ lora:
 dpo:
   beta: 0.1
   loss_type: sigmoid
+  precompute_ref_log_probs: false
+  precompute_ref_batch_size: null
 
 training:
   num_train_epochs: 1
@@ -46,12 +48,17 @@ training:
   weight_decay: 0.0
   lr_scheduler_type: cosine
   gradient_checkpointing: true
+  gradient_checkpointing_kwargs:
+    use_reentrant: false
   bf16: true
   fp16: false
+  optim: adamw_torch
   logging_steps: 10
   eval_steps: 100
   save_steps: 100
   save_total_limit: 3
+  report_to:
+    - tensorboard
 
 paths:
   output_dir: outputs/checkpoints/stage2_lora_dpo/qwen3_8b_gsm8k_cot_compression_lora
