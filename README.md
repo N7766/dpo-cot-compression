@@ -132,10 +132,28 @@ This does not start DPO training and does not generate teacher chosen responses.
 Generate GLM-5.2 teacher chosen responses after the train correct-nontrivial file exists:
 
 ```bash
-python scripts/06_deepinfra_teacher_test.py --config configs/deepinfra_test.yaml
+python scripts/06_deepinfra_teacher_test.py --config configs/generate_chosen.yaml
 ```
 
-Use `--max_samples N` only for smoke tests; omitting it processes all available input samples.
+The production chosen output is:
+
+```text
+outputs/generations/glm52_gsm8k_train_chosen.jsonl
+```
+
+For a small DeepInfra smoke test, use:
+
+```bash
+python scripts/06_deepinfra_teacher_test.py --config configs/deepinfra_test.yaml --max_samples 3
+```
+
+Smoke-test output is kept separate:
+
+```text
+outputs/generations/deepinfra_glm52_teacher_smoke_test.jsonl
+```
+
+For chosen generation, use `--max_samples N` only for staged partial runs; omitting it processes all available input samples.
 
 ## Repository Layout
 

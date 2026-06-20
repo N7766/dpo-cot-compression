@@ -1,5 +1,9 @@
 #!/usr/bin/env python
-"""Smoke-test DeepInfra teacher generation for future DPO chosen responses."""
+"""Generate DeepInfra teacher responses for future DPO chosen data.
+
+Use configs/deepinfra_test.yaml with --max_samples for smoke tests, and
+configs/generate_chosen.yaml for larger chosen-response generation.
+"""
 
 from __future__ import annotations
 
