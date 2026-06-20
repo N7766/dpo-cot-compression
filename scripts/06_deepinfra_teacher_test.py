@@ -15,6 +15,7 @@ from statistics import mean
 from pathlib import Path
 
 from openai import OpenAI
+from tqdm import tqdm
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -64,7 +65,7 @@ def call_deepinfra(client: OpenAI, model_cfg: dict, prompt: str) -> str:
     return (content or "").strip()
 
 
-def generate_one(sample: dict, model_cfg: dict, base_url: str, api_key: str, max_retries: int) -> dict:
+def generate_one(sample: dict, model_cfg: dict, base_url: str, api_key: str, max_retries: int) -> tuple[dict | None, str | None]:
     client = OpenAI(api_key=api_key, base_url=base_url)
     prompt = build_prompt(sample["question"])
     prediction = ""
@@ -77,7 +78,7 @@ def generate_one(sample: dict, model_cfg: dict, base_url: str, api_key: str, max
         except Exception as exc:
             error = str(exc)
             if attempt >= max_retries:
-                break
+                return None, error
 
     pred_answer = extract_final_answer(prediction)
     output_tokens = approximate_token_count(prediction)
@@ -98,22 +99,7 @@ def generate_one(sample: dict, model_cfg: dict, base_url: str, api_key: str, max
         "rejected_tokens": rejected_tokens,
         "compression_ratio_vs_rejected": ratio,
     }
-    if error and not prediction:
-        result["error"] = error
-    return result
-
-
-def print_result_log(result: dict) -> None:
-    ratio = result["compression_ratio_vs_rejected"]
-    ratio_text = f"{ratio:.4f}" if ratio is not None else "n/a"
-    print(
-        f"[{result['id']}] output_tokens={result['output_tokens']}, "
-        f"rejected_tokens={result['rejected_tokens']}, "
-        f"compression={ratio_text}, "
-        f"pred_answer={result['pred_answer']}, "
-        f"gold_answer={result['gold_answer']}, "
-        f"correct={result['is_correct']}"
-    )
+    return result, None
 
 
 def main() -> None:
@@ -142,6 +128,7 @@ def main() -> None:
     print(f"Base URL: {base_url}")
     print(f"Input file: {input_file}")
     print(f"Output file: {output_file}")
+    print("Input is expected to be Qwen3 correct nontrivial rejected candidates.")
 
     samples = read_jsonl(input_file)
     if args.max_samples is not None:
@@ -171,33 +158,34 @@ def main() -> None:
             executor.submit(generate_one, sample, model_cfg, base_url, api_key, max_retries): sample
             for sample in pending_samples
         }
+        progress = tqdm(total=len(futures), desc="Generating chosen", unit="sample")
         for future in as_completed(futures):
             sample = futures[future]
             try:
-                result = future.result()
+                result, error = future.result()
             except Exception as exc:
-                prompt = build_prompt(sample["question"])
-                result = {
-                    "id": sample["id"],
-                    "question": sample["question"],
-                    "gold_answer": sample.get("gold_answer"),
-                    "teacher_model": model_name,
-                    "prompt": prompt,
-                    "prediction": "",
-                    "pred_answer": None,
-                    "is_correct": False,
-                    "output_tokens": 0,
-                    "rejected_tokens": int(sample.get("output_tokens", 0)),
-                    "compression_ratio_vs_rejected": None,
-                    "error": str(exc),
-                }
+                tqdm.write(f"[{sample['id']}] Unexpected worker failure; not writing this sample: {exc}")
+                result = None
+                error = str(exc)
 
-            append_jsonl(output_file, result)
-            completed_ids.add(result["id"])
-            new_results.append(result)
-            if result.get("error") and not result.get("prediction"):
-                print(f"[{result['id']}] DeepInfra call failed: {result['error']}")
-            print_result_log(result)
+            if result is not None:
+                append_jsonl(output_file, result)
+                completed_ids.add(result["id"])
+                new_results.append(result)
+                ratio = result["compression_ratio_vs_rejected"]
+                ratio_text = f"{ratio:.4f}" if ratio is not None else "n/a"
+                tqdm.write(
+                    f"[{result['id']}] output_tokens={result['output_tokens']}, "
+                    f"rejected_tokens={result['rejected_tokens']}, "
+                    f"compression={ratio_text}, "
+                    f"pred_answer={result['pred_answer']}, "
+                    f"gold_answer={result['gold_answer']}, "
+                    f"correct={result['is_correct']}"
+                )
+            elif error:
+                tqdm.write(f"[{sample['id']}] DeepInfra call failed; not writing this sample so it can be retried later: {error}")
+            progress.update(1)
+        progress.close()
 
     correct_count = sum(bool(row["is_correct"]) for row in new_results)
     avg_output_tokens = mean(row["output_tokens"] for row in new_results) if new_results else 0.0
