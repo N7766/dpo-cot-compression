@@ -22,7 +22,7 @@ from src.utils.io import append_jsonl, load_yaml, read_jsonl
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="configs/deepinfra_test.yaml")
-    parser.add_argument("--max_samples", type=int, default=3)
+    parser.add_argument("--max_samples", type=int, default=None, help="Limit input samples for smoke tests. Omit for all.")
     return parser.parse_args()
 
 

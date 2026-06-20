@@ -129,6 +129,14 @@ python scripts/02_baseline_inference.py --config configs/generate_data.yaml
 
 This does not start DPO training and does not generate teacher chosen responses.
 
+Generate GLM-5.2 teacher chosen responses after the train correct-nontrivial file exists:
+
+```bash
+python scripts/06_deepinfra_teacher_test.py --config configs/deepinfra_test.yaml
+```
+
+Use `--max_samples N` only for smoke tests; omitting it processes all available input samples.
+
 ## Repository Layout
 
 ```text
