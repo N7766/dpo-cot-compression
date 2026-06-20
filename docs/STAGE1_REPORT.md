@@ -141,16 +141,34 @@ split:
   seed: 42
 ```
 
-Output files:
+Local generated output files:
 
 ```text
 data/preference/stage1_gsm8k_qwen3_rejected_glm52_chosen_train.jsonl
 data/preference/stage1_gsm8k_qwen3_rejected_glm52_chosen_val.jsonl
 ```
 
-These generated data files are intentionally ignored by git. The repository tracks the scripts and configs needed to reproduce them, not the generated experiment outputs.
+These files are generated locally and are intentionally excluded from git. The repository tracks the code, configuration files, and documentation needed to reproduce the pipeline, rather than committing generated JSONL experiment outputs.
 
-## 8. Implementation Notes
+## 8. Reproducibility and GitHub Repository
+
+The GitHub repository contains:
+
+- source code for data preparation, inference, evaluation, filtering, teacher generation, and DPO dataset construction;
+- YAML configuration files for each Stage 1 step;
+- project documentation and this Stage 1 report.
+
+Generated data and experiment outputs are not uploaded to GitHub. This includes processed GSM8K JSONL files, model generation JSONL files, filtered candidate files, DPO train/validation JSONL files, metrics JSON files, logs, checkpoints, local caches, and API tokens.
+
+This is intentional for three reasons:
+
+1. Generated JSONL files can be large and are better treated as reproducible artifacts.
+2. API keys and local environment files must never be committed.
+3. The important reproducibility record is the script/config combination used to regenerate the artifacts.
+
+The repository can therefore be cited as the implementation and reproduction record, while the numerical results in this report summarize the locally generated Stage 1 artifacts.
+
+## 9. Implementation Notes
 
 Stage 1 scripts are organized as:
 
@@ -170,7 +188,7 @@ Important engineering decisions:
 - Generated data, outputs, logs, checkpoints, and caches are ignored by git.
 - The train/validation preference split is separate from final held-out evaluation.
 
-## 9. Limitations and Risks
+## 10. Limitations and Risks
 
 1. Token counts are approximate word-based counts for API outputs, not exact tokenizer counts.
 2. Correctness is based on numerical answer extraction and exact numeric matching, which is suitable for GSM8K but not a general semantic evaluator.
@@ -178,7 +196,7 @@ Important engineering decisions:
 4. The validation split is drawn from filtered training data and should be used for Stage 2 training diagnostics only. Final model quality should be evaluated on held-out GSM8K test data.
 5. The rejected data is conditioned on Qwen3-8B being correct; this intentionally narrows the task to compression of correct reasoning rather than error correction.
 
-## 10. Stage 2 Plan
+## 11. Stage 2 Plan
 
 Stage 2 will train a DPO model using the Stage 1 preference dataset.
 
