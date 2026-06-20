@@ -18,6 +18,8 @@ env/
 .idea/
 .vscode/
 .DS_Store
+~$*.docx
+docs/Stage1_Report_DPO_CoT_Compression.docx
 
 # Secrets
 .env
@@ -64,12 +66,26 @@ outputs/results/*.jsonl
 !data/preference/.gitkeep
 !outputs/checkpoints/
 !outputs/checkpoints/.gitkeep
+!outputs/checkpoints/stage2_lora_dpo/
+!outputs/checkpoints/stage2_lora_dpo/.gitkeep
+!outputs/checkpoints/stage2_full_dpo/
+!outputs/checkpoints/stage2_full_dpo/.gitkeep
 !outputs/logs/
 !outputs/logs/.gitkeep
+!outputs/logs/stage2_lora_dpo/
+!outputs/logs/stage2_lora_dpo/.gitkeep
+!outputs/logs/stage2_full_dpo/
+!outputs/logs/stage2_full_dpo/.gitkeep
 !outputs/generations/
 !outputs/generations/.gitkeep
+!outputs/generations/stage2_eval/
+!outputs/generations/stage2_eval/.gitkeep
 !outputs/results/
 !outputs/results/.gitkeep
+!outputs/results/stage2_lora_dpo/
+!outputs/results/stage2_lora_dpo/.gitkeep
+!outputs/results/stage2_full_dpo/
+!outputs/results/stage2_full_dpo/.gitkeep
 
 # Notebook checkpoints
 .ipynb_checkpoints/

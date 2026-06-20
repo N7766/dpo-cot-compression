@@ -1,0 +1,52 @@
+experiment:
+  name: qwen3_8b_gsm8k_cot_compression_full_dpo
+  stage: stage2
+  method: full_dpo
+  seed: 42
+
+model:
+  base_model_name_or_path: Qwen/Qwen3-8B
+  trust_remote_code: true
+  torch_dtype: bfloat16
+  attn_implementation: flash_attention_2
+
+data:
+  train_file: data/preference/stage1_gsm8k_qwen3_rejected_glm52_chosen_train.jsonl
+  val_file: data/preference/stage1_gsm8k_qwen3_rejected_glm52_chosen_val.jsonl
+  prompt_field: prompt
+  chosen_field: chosen
+  rejected_field: rejected
+  max_prompt_length: 512
+  max_length: 2048
+
+dpo:
+  beta: 0.1
+  loss_type: sigmoid
+
+training:
+  num_train_epochs: 1
+  per_device_train_batch_size: 1
+  per_device_eval_batch_size: 1
+  gradient_accumulation_steps: 16
+  learning_rate: 1.0e-6
+  warmup_ratio: 0.03
+  weight_decay: 0.0
+  lr_scheduler_type: cosine
+  gradient_checkpointing: true
+  bf16: true
+  fp16: false
+  fsdp: full_shard auto_wrap
+  logging_steps: 10
+  eval_steps: 100
+  save_steps: 100
+  save_total_limit: 2
+
+paths:
+  output_dir: outputs/checkpoints/stage2_full_dpo/qwen3_8b_gsm8k_cot_compression_full
+  logging_dir: outputs/logs/stage2_full_dpo/qwen3_8b_gsm8k_cot_compression_full
+  metrics_dir: outputs/results/stage2_full_dpo
+  eval_generation_dir: outputs/generations/stage2_eval/full_dpo
+
+hub:
+  push_to_hub: false
+  repo_id: null

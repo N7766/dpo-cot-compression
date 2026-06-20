@@ -210,6 +210,22 @@ The validation split is a held-out slice of the filtered preference data for Sta
 
 Stage 2 will train and evaluate the compression model using the Stage 1 DPO train/validation files. No Stage 2 training scripts are run as part of Stage 1 data construction.
 
+Stage 2 training layout and naming plan: [`docs/STAGE2_PLAN.md`](docs/STAGE2_PLAN.md)
+
+Planned Stage 2 configs:
+
+- `configs/stage2_lora_dpo.yaml`
+- `configs/stage2_full_dpo.yaml`
+
+Planned training outputs remain ignored by git under:
+
+- `outputs/checkpoints/stage2_lora_dpo/`
+- `outputs/checkpoints/stage2_full_dpo/`
+- `outputs/logs/stage2_lora_dpo/`
+- `outputs/logs/stage2_full_dpo/`
+- `outputs/results/stage2_lora_dpo/`
+- `outputs/results/stage2_full_dpo/`
+
 ## Repository Layout
 
 ```text
