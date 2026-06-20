@@ -12,4 +12,4 @@ paths:
 
 generation:
   max_retries: 2
-  concurrency: 5
+  concurrency: 8
