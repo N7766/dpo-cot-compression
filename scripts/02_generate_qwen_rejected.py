@@ -261,7 +261,7 @@ def main() -> None:
         if not hf_token:
             raise RuntimeError("HF_TOKEN is required for hf_api backend. Please run: export HF_TOKEN=your_token")
     else:
-        raise ValueError("Stage 1 baseline inference supports only backend: hf_api")
+        raise ValueError("Qwen generation currently supports only backend: hf_api")
 
     existing_outputs = read_jsonl(output_file)
     completed_ids = {row.get("id") for row in existing_outputs if row.get("id")}

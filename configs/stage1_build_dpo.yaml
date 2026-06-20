@@ -1,8 +1,13 @@
 paths:
   rejected_file: outputs/results/qwen3_8b_gsm8k_train_correct_nontrivial.jsonl
   chosen_file: outputs/generations/glm52_gsm8k_train_chosen.jsonl
-  output_file: data/preference/gsm8k_qwen3_rejected_glm52_chosen_train.jsonl
-  summary_file: outputs/results/gsm8k_qwen3_glm52_dpo_build_summary.json
+  train_output_file: data/preference/stage1_gsm8k_qwen3_rejected_glm52_chosen_train.jsonl
+  val_output_file: data/preference/stage1_gsm8k_qwen3_rejected_glm52_chosen_val.jsonl
+  summary_file: outputs/results/stage1_gsm8k_qwen3_glm52_dpo_build_summary.json
+
+split:
+  val_ratio: 0.1
+  seed: 42
 
 filters:
   require_rejected_correct: true

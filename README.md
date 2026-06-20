@@ -6,22 +6,32 @@ MSc dissertation project studying whether Direct Preference Optimization (DPO) c
 
 The long-term goal is to construct preference data where verbose but correct reasoning is treated as the rejected response and shorter correct reasoning is treated as the chosen response. The project will then use DPO to encourage more concise reasoning without sacrificing GSM8K answer accuracy.
 
-## Stage 1: Baseline
+## Stage 1: Data Construction
 
-Stage 1 establishes a baseline inference and evaluation pipeline before any preference construction or DPO training.
+Stage 1 builds the evaluation baseline and the DPO preference dataset. Stage 2 is reserved for DPO training and model evaluation.
 
-Objective:
+Full Stage 1 analysis report: [`docs/STAGE1_REPORT.md`](docs/STAGE1_REPORT.md)
+
+Stage 1A baseline objective:
 
 - Evaluate `Qwen/Qwen3-8B` on a 100-sample GSM8K subset.
 - Use Hugging Face API inference to avoid local model weight downloads.
 - Save model generations as JSONL.
 - Compute answer accuracy and output length statistics.
-- Identify correct nontrivial reasoning outputs for future DPO rejected candidates.
+- Identify correct nontrivial reasoning outputs.
+
+Stage 1B/1C preference-data objective:
+
+- Generate Qwen3-8B train-set responses as rejected candidates.
+- Filter for correct nontrivial rejected responses.
+- Generate shorter correct teacher responses with GLM-5.2 as chosen candidates.
+- Build train/validation DPO JSONL files.
 
 Pipeline:
 
 ```text
 GSM8K -> Prompt -> Qwen3-8B HF API -> JSONL generations -> evaluation -> filtering analysis
+GSM8K train -> Qwen3 rejected -> GLM-5.2 chosen -> filtered DPO train/val data
 ```
 
 ## Setup
@@ -40,7 +50,7 @@ export HF_TOKEN=xxxxx
 
 The token is read from the `HF_TOKEN` environment variable. Do not put tokens in config files or source code.
 
-## Stage 1 Commands
+## Stage 1A Baseline Commands
 
 Download and preprocess GSM8K:
 
@@ -98,25 +108,39 @@ Generated Stage 1 files are intentionally ignored by git:
 - `outputs/results/baseline_answer_only.jsonl`
 - `outputs/results/baseline_overthinking_failures.jsonl`
 
-## Stage 2 Preparation: Rejected Candidates
+## Stage 1B/1C Preference Data
 
-Stage 2 preference construction should use GSM8K train data, not the Stage 1 test baseline. The Qwen3 train generations will be used as candidate rejected responses; chosen responses will be generated later by a teacher model.
+Preference construction uses GSM8K train data, not the 100-sample Stage 1A test baseline. Qwen3 train generations are used as candidate rejected responses, and GLM-5.2 teacher generations are used as concise chosen responses.
+
+Stage 1 preference-data result:
+
+| Metric | Value |
+| --- | ---: |
+| Qwen rejected candidates analyzed | 6998 |
+| Correct nontrivial rejected candidates | 4829 |
+| Matched GLM chosen candidates | 4829 |
+| Final DPO pairs | 4625 |
+| Train pairs | 4163 |
+| Validation pairs | 462 |
+| Avg chosen tokens | 40.04 |
+| Avg rejected tokens | 136.16 |
+| Avg compression ratio | 63.68% |
 
 ## Workflow Reference
 
 | Step | Purpose | Script | Config |
 | --- | --- | --- | --- |
-| 1 | Prepare GSM8K JSONL | `scripts/01_prepare_gsm8k.py` | `configs/stage1_baseline.yaml` or `configs/stage2_generate_rejected.yaml` |
-| 2 | Generate Qwen3 outputs/rejected candidates | `scripts/02_generate_qwen_rejected.py` | `configs/stage1_baseline.yaml` or `configs/stage2_generate_rejected.yaml` |
+| 1 | Prepare GSM8K JSONL | `scripts/01_prepare_gsm8k.py` | `configs/stage1_baseline.yaml` or `configs/stage1_generate_rejected.yaml` |
+| 2 | Generate Qwen3 outputs/rejected candidates | `scripts/02_generate_qwen_rejected.py` | `configs/stage1_baseline.yaml` or `configs/stage1_generate_rejected.yaml` |
 | 3 | Evaluate generations | `scripts/03_evaluate_generations.py` | matching generation config |
 | 4 | Filter correct nontrivial rejected candidates | `scripts/04_filter_rejected_candidates.py` | matching generation config |
-| 5 | Generate GLM-5.2 chosen responses | `scripts/05_generate_glm_chosen.py` | `configs/stage2_generate_chosen.yaml` |
-| 6 | Build DPO preference dataset | `scripts/06_build_dpo_dataset.py` | `configs/stage2_build_dpo.yaml` |
+| 5 | Generate GLM-5.2 chosen responses | `scripts/05_generate_glm_chosen.py` | `configs/stage1_generate_chosen.yaml` |
+| 6 | Build DPO preference dataset | `scripts/06_build_dpo_dataset.py` | `configs/stage1_build_dpo.yaml` |
 
 The rejected-candidate config is:
 
 ```text
-configs/stage2_generate_rejected.yaml
+configs/stage1_generate_rejected.yaml
 ```
 
 It uses:
@@ -129,13 +153,13 @@ It uses:
 Prepare the train subset:
 
 ```bash
-python scripts/01_prepare_gsm8k.py --config configs/stage2_generate_rejected.yaml
+python scripts/01_prepare_gsm8k.py --config configs/stage1_generate_rejected.yaml
 ```
 
 Generate Qwen3 rejected candidates with resume-safe append behavior:
 
 ```bash
-python scripts/02_generate_qwen_rejected.py --config configs/stage2_generate_rejected.yaml
+python scripts/02_generate_qwen_rejected.py --config configs/stage1_generate_rejected.yaml
 ```
 
 This does not start DPO training and does not generate teacher chosen responses.
@@ -143,7 +167,7 @@ This does not start DPO training and does not generate teacher chosen responses.
 Generate GLM-5.2 teacher chosen responses after the train correct-nontrivial file exists:
 
 ```bash
-python scripts/05_generate_glm_chosen.py --config configs/stage2_generate_chosen.yaml
+python scripts/05_generate_glm_chosen.py --config configs/stage1_generate_chosen.yaml
 ```
 
 The production chosen output is:
@@ -155,7 +179,7 @@ outputs/generations/glm52_gsm8k_train_chosen.jsonl
 For a small DeepInfra smoke test, use:
 
 ```bash
-python scripts/05_generate_glm_chosen.py --config configs/smoke_deepinfra_teacher.yaml --max_samples 3
+python scripts/05_generate_glm_chosen.py --config configs/stage1_smoke_deepinfra_teacher.yaml --max_samples 3
 ```
 
 Smoke-test output is kept separate:
@@ -169,15 +193,22 @@ For chosen generation, use `--max_samples N` only for staged partial runs; omitt
 Build DPO preference pairs after rejected and chosen files are ready:
 
 ```bash
-python scripts/06_build_dpo_dataset.py --config configs/stage2_build_dpo.yaml
+python scripts/06_build_dpo_dataset.py --config configs/stage1_build_dpo.yaml
 ```
 
 This writes:
 
 ```text
-data/preference/gsm8k_qwen3_rejected_glm52_chosen_train.jsonl
-outputs/results/gsm8k_qwen3_glm52_dpo_build_summary.json
+data/preference/stage1_gsm8k_qwen3_rejected_glm52_chosen_train.jsonl
+data/preference/stage1_gsm8k_qwen3_rejected_glm52_chosen_val.jsonl
+outputs/results/stage1_gsm8k_qwen3_glm52_dpo_build_summary.json
 ```
+
+The validation split is a held-out slice of the filtered preference data for Stage 2 training diagnostics and checkpoint selection. Final accuracy should still be measured on a separate GSM8K evaluation set.
+
+## Stage 2: DPO Training
+
+Stage 2 will train and evaluate the compression model using the Stage 1 DPO train/validation files. No Stage 2 training scripts are run as part of Stage 1 data construction.
 
 ## Repository Layout
 
