@@ -216,6 +216,9 @@ Planned Stage 2 configs:
 
 - `configs/stage2_lora_dpo.yaml`
 - `configs/stage2_full_dpo.yaml`
+- `configs/stage2_eval.yaml`
+- `configs/stage2_serve.yaml`
+- `configs/stage2_upload.yaml`
 
 Planned training outputs remain ignored by git under:
 
@@ -229,8 +232,11 @@ Planned training outputs remain ignored by git under:
 Initial Stage 2 commands:
 
 ```bash
+python scripts/00_download_model.py --config configs/stage2_lora_dpo.yaml --dry_run
+python scripts/12_estimate_memory.py --config configs/stage2_lora_dpo.yaml --num_gpus 1
 python scripts/07_train_lora_dpo.py --config configs/stage2_lora_dpo.yaml --dry_run
 python scripts/08_train_full_dpo.py --config configs/stage2_full_dpo.yaml --dry_run
+python scripts/10_eval_stage2_model.py --config configs/stage2_eval.yaml --dry_run
 ```
 
 Full DPO is expected to run with a distributed launcher, for example:
@@ -238,6 +244,13 @@ Full DPO is expected to run with a distributed launcher, for example:
 ```bash
 torchrun --nproc_per_node=4 scripts/08_train_full_dpo.py --config configs/stage2_full_dpo.yaml
 ```
+
+After training, use:
+
+- `scripts/13_plot_training_curves.py` for loss/GPU memory plots
+- `scripts/10_eval_stage2_model.py` for validation/test evaluation
+- `scripts/14_serve_fastapi.py` for quick inference testing
+- `scripts/11_upload_model.py` for optional Hugging Face upload
 
 ## Repository Layout
 

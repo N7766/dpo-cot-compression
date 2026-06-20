@@ -125,11 +125,17 @@ Suggested Stage 2 scripts:
 
 | Script | Purpose |
 | --- | --- |
+| `scripts/00_download_model.py` | Pre-download/cache the base model on a GPU machine |
 | `scripts/07_train_lora_dpo.py` | Train LoRA adapter with DPO |
 | `scripts/08_train_full_dpo.py` | Train full model with DPO or FSDP/DeepSpeed |
 | `scripts/09_merge_lora.py` | Merge LoRA adapter into base model for inference/export |
 | `scripts/10_eval_stage2_model.py` | Evaluate trained model on held-out GSM8K |
 | `scripts/11_upload_model.py` | Optional Hugging Face upload after review |
+| `scripts/12_estimate_memory.py` | Rough memory estimate before training |
+| `scripts/13_plot_training_curves.py` | Plot loss and GPU memory curves |
+| `scripts/14_serve_fastapi.py` | Local FastAPI inference server |
+| `scripts/15_probe_model_memory.py` | Load model once and report actual CUDA memory |
+| `scripts/remote_gpu_quickstart.sh` | Remote GPU setup and dry-run helper |
 
 Stage 2 should begin with `07_train_lora_dpo.py`.
 
@@ -195,6 +201,12 @@ export HF_HOME=/workspace/hf_cache
 export HF_TOKEN=xxxxx
 ```
 
+The quickstart helper performs dependency installation, dry-runs, and memory estimates:
+
+```bash
+bash scripts/remote_gpu_quickstart.sh
+```
+
 Copy local generated Stage 1 preference data if not regenerating remotely:
 
 ```bash
@@ -205,6 +217,9 @@ rsync -av data/preference/stage1_gsm8k_qwen3_rejected_glm52_chosen_val.jsonl <re
 Then run LoRA+DPO training once the script exists:
 
 ```bash
+python scripts/00_download_model.py --config configs/stage2_lora_dpo.yaml
+python scripts/12_estimate_memory.py --config configs/stage2_lora_dpo.yaml --num_gpus 1
+python scripts/15_probe_model_memory.py --config configs/stage2_lora_dpo.yaml
 python scripts/07_train_lora_dpo.py --config configs/stage2_lora_dpo.yaml
 ```
 
@@ -218,7 +233,37 @@ python scripts/08_train_full_dpo.py --config configs/stage2_full_dpo.yaml --dry_
 For full DPO, use a distributed launcher. Example:
 
 ```bash
+python scripts/00_download_model.py --config configs/stage2_full_dpo.yaml
+python scripts/12_estimate_memory.py --config configs/stage2_full_dpo.yaml --num_gpus 4
 torchrun --nproc_per_node=4 scripts/08_train_full_dpo.py --config configs/stage2_full_dpo.yaml
+```
+
+After training, plot loss and GPU memory:
+
+```bash
+python scripts/13_plot_training_curves.py \
+  --trainer_state outputs/checkpoints/stage2_lora_dpo/qwen3_8b_gsm8k_cot_compression_lora/trainer_state.json \
+  --gpu_memory outputs/results/stage2_lora_dpo/qwen3_8b_gsm8k_cot_compression_lora_dpo_gpu_memory.jsonl \
+  --output_dir outputs/results/stage2_lora_dpo/plots
+```
+
+Evaluate the LoRA model on the Stage 1 validation split:
+
+```bash
+python scripts/10_eval_stage2_model.py --config configs/stage2_eval.yaml --max_samples 100
+```
+
+Start a small FastAPI inference server:
+
+```bash
+python scripts/14_serve_fastapi.py --config configs/stage2_serve.yaml
+```
+
+Upload an adapter or model directory to Hugging Face after review:
+
+```bash
+python scripts/11_upload_model.py --config configs/stage2_upload.yaml --dry_run
+python scripts/11_upload_model.py --config configs/stage2_upload.yaml
 ```
 
 ## 9. Evaluation Policy

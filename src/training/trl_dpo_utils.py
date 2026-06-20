@@ -46,6 +46,10 @@ def prepare_output_dirs(cfg: dict[str, Any]) -> None:
         Path(paths["merged_output_dir"]).mkdir(parents=True, exist_ok=True)
 
 
+def gpu_memory_log_path(cfg: dict[str, Any]) -> Path:
+    return Path(cfg["paths"]["metrics_dir"]) / f"{cfg['experiment']['name']}_gpu_memory.jsonl"
+
+
 def load_preference_datasets(cfg: dict[str, Any]):
     data_cfg = cfg["data"]
     fields = [

@@ -1,0 +1,16 @@
+model:
+  model_dir: outputs/checkpoints/stage2_lora_dpo/qwen3_8b_gsm8k_cot_compression_lora
+  base_model_name_or_path: Qwen/Qwen3-8B
+  torch_dtype: bfloat16
+  trust_remote_code: true
+
+data:
+  eval_file: data/preference/stage1_gsm8k_qwen3_rejected_glm52_chosen_val.jsonl
+  max_samples: null
+
+generation:
+  max_new_tokens: 512
+  temperature: 0.0
+
+paths:
+  output_file: outputs/results/stage2_lora_dpo/val_eval.json

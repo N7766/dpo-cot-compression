@@ -19,6 +19,7 @@ from src.training.trl_dpo_utils import (
     common_dpo_config_kwargs,
     fail_with_dependency_hint,
     filter_config_kwargs,
+    gpu_memory_log_path,
     load_preference_datasets,
     load_stage2_config,
     load_tokenizer,
@@ -27,6 +28,7 @@ from src.training.trl_dpo_utils import (
     print_training_banner,
     require_training_files,
 )
+from src.training.callbacks import GpuMemoryCallback
 
 
 def parse_args() -> argparse.Namespace:
@@ -100,6 +102,7 @@ def main() -> None:
         eval_dataset=dataset["validation"],
         processing_class=tokenizer,
         peft_config=peft_config,
+        callbacks=[GpuMemoryCallback(gpu_memory_log_path(cfg))],
     )
     trainer.train()
     trainer.save_model(cfg["paths"]["output_dir"])
