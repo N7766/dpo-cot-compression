@@ -39,12 +39,17 @@ def main() -> None:
     repo_id = args.repo_id or hub_cfg.get("repo_id")
     private = args.private or bool(hub_cfg.get("private", False))
     commit_message = args.commit_message or hub_cfg.get("commit_message", "Upload Stage 2 model")
+    ignore_patterns = hub_cfg.get("ignore_patterns", [])
 
     if not repo_id:
         raise ValueError("Set --repo_id or hub.repo_id in the config.")
     print(f"Model dir: {model_dir}")
     print(f"Repo id: {repo_id}")
     print(f"Private: {private}")
+    if ignore_patterns:
+        print("Ignore patterns:")
+        for pattern in ignore_patterns:
+            print(f"  - {pattern}")
 
     if args.dry_run:
         print("Dry run complete. No files were uploaded.")
@@ -63,6 +68,7 @@ def main() -> None:
         repo_id=repo_id,
         repo_type="model",
         commit_message=commit_message,
+        ignore_patterns=ignore_patterns,
     )
     print(f"Uploaded {model_dir} to https://huggingface.co/{repo_id}")
 
