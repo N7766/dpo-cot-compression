@@ -56,8 +56,7 @@ training:
   eval_steps: 100
   save_steps: 100
   save_total_limit: 2
-  report_to:
-    - tensorboard
+  report_to: []
 
 paths:
   output_dir: outputs/checkpoints/stage2_full_dpo/qwen3_8b_gsm8k_cot_compression_full
