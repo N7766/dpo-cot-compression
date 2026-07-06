@@ -1,0 +1,15 @@
+model:
+  model_dir: outputs/checkpoints/stage3_lora_sft/qwen3_8b_gsm8k_cot_compression_lora_sft
+
+hub:
+  repo_id: N7766/qwen3-8b-gsm8k-cot-compression-lora-sft-stage3
+  private: false
+  commit_message: Upload Stage 3 LoRA SFT adapter
+  ignore_patterns:
+    - checkpoint-*
+    - checkpoint-*/**
+    - runs
+    - runs/**
+    - optimizer.pt
+    - scheduler.pt
+    - rng_state*.pth

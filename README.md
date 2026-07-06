@@ -259,15 +259,45 @@ Stage 3 configs:
 - `configs/stage3_build_data.yaml`
 - `configs/stage3_lora_sft.yaml`
 - `configs/stage3_lora_dpo.yaml`
+- `configs/stage3_upload.yaml`
+
+Stage 3 SFT report: [`docs/STAGE3_REPORT.md`](docs/STAGE3_REPORT.md)
+
+Completed Stage 3 LoRA SFT warm-up result:
+
+| Metric | Value |
+| --- | ---: |
+| Train SFT examples | 4048 |
+| Validation SFT examples | 451 |
+| GPUs | 2 x RTX 5090 |
+| Effective batch size | 16 |
+| Training runtime | 1005 s / 16 min 45 s |
+| Final train loss | 0.3577 |
+| Final eval loss | 0.2007 |
+| Full validation samples | 462 |
+| Full validation accuracy | 95.02% |
+| Avg validation output tokens | 32.42 |
+
+Upload the Stage 3 SFT adapter after training:
+
+```bash
+python scripts/11_upload_model.py --config configs/stage3_upload.yaml
+```
 
 Planned training outputs remain ignored by git under:
 
 - `outputs/checkpoints/stage2_lora_dpo/`
 - `outputs/checkpoints/stage2_full_dpo/`
+- `outputs/checkpoints/stage3_lora_sft/`
+- `outputs/checkpoints/stage3_lora_dpo/`
 - `outputs/logs/stage2_lora_dpo/`
 - `outputs/logs/stage2_full_dpo/`
+- `outputs/logs/stage3_lora_sft/`
+- `outputs/logs/stage3_lora_dpo/`
 - `outputs/results/stage2_lora_dpo/`
 - `outputs/results/stage2_full_dpo/`
+- `outputs/results/stage3_lora_sft/`
+- `outputs/results/stage3_lora_dpo/`
 
 Initial Stage 2 commands:
 
