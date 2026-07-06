@@ -30,11 +30,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max_samples", type=int, default=None)
     parser.add_argument("--max_new_tokens", type=int, default=None)
     parser.add_argument("--temperature", type=float, default=None)
+    parser.add_argument("--batch_size", type=int, default=None)
     parser.add_argument("--dry_run", action="store_true")
     return parser.parse_args()
 
 
-def resolve_eval_config(path: str) -> tuple[dict, str, str, str, int, float]:
+def resolve_eval_config(path: str) -> tuple[dict, str, str, str, int, float, int]:
     raw = load_yaml(path)
     if "experiment" in raw:
         cfg = load_stage2_config(path)
@@ -45,6 +46,7 @@ def resolve_eval_config(path: str) -> tuple[dict, str, str, str, int, float]:
             str(Path(cfg["paths"]["metrics_dir"]) / f"{cfg['experiment']['name']}_eval.json"),
             512,
             0.0,
+            1,
         )
 
     model_cfg = raw.get("model", {})
@@ -66,6 +68,7 @@ def resolve_eval_config(path: str) -> tuple[dict, str, str, str, int, float]:
         paths.get("output_file", "outputs/results/stage2_eval.json"),
         int(gen_cfg.get("max_new_tokens", 512)),
         float(gen_cfg.get("temperature", 0.0)),
+        int(gen_cfg.get("batch_size", 1)),
     )
 
 
@@ -90,12 +93,13 @@ def gold_from_row(row: dict) -> str | None:
 
 def main() -> None:
     args = parse_args()
-    cfg, config_model_dir, config_eval_file, config_output_file, config_max_new_tokens, config_temperature = resolve_eval_config(args.config)
+    cfg, config_model_dir, config_eval_file, config_output_file, config_max_new_tokens, config_temperature, config_batch_size = resolve_eval_config(args.config)
     model_dir = args.model_dir or config_model_dir
     eval_file = args.eval_file or config_eval_file
     output_file = args.output_file or config_output_file
     max_new_tokens = args.max_new_tokens if args.max_new_tokens is not None else config_max_new_tokens
     temperature = args.temperature if args.temperature is not None else config_temperature
+    batch_size = args.batch_size if args.batch_size is not None else config_batch_size
 
     rows = read_jsonl(eval_file)
     if args.max_samples:
@@ -103,6 +107,8 @@ def main() -> None:
     print(f"Model dir: {model_dir}")
     print(f"Eval file: {eval_file}")
     print(f"Rows: {len(rows)}")
+    print(f"Max new tokens: {max_new_tokens}")
+    print(f"Batch size: {batch_size}")
 
     if args.dry_run:
         missing_gold = sum(1 for row in rows if gold_from_row(row) is None)
@@ -113,37 +119,42 @@ def main() -> None:
     model_cfg = cfg["model"]
     model_cfg["base_model_name_or_path"] = model_cfg.get("base_model") or model_cfg.get("base_model_name_or_path")
     model, tokenizer = load_model_and_tokenizer(model_dir, model_cfg)
+    tokenizer.padding_side = "left"
     model.eval()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model.to(device)
     outputs = []
-    for row in tqdm(rows, desc="evaluating"):
-        prompt = prompt_from_row(row)
-        gold = gold_from_row(row)
-        inputs = tokenizer(prompt, return_tensors="pt").to(device)
+    for start in tqdm(range(0, len(rows), batch_size), desc="evaluating"):
+        batch_rows = rows[start : start + batch_size]
+        prompts = [prompt_from_row(row) for row in batch_rows]
+        golds = [gold_from_row(row) for row in batch_rows]
+        inputs = tokenizer(prompts, return_tensors="pt", padding=True).to(device)
         gen_kwargs = {
             "max_new_tokens": max_new_tokens,
             "do_sample": temperature > 0,
             "temperature": temperature if temperature > 0 else None,
             "pad_token_id": tokenizer.eos_token_id,
+            "eos_token_id": tokenizer.eos_token_id,
         }
         gen_kwargs = {k: v for k, v in gen_kwargs.items() if v is not None}
         with torch.no_grad():
             generated = model.generate(**inputs, **gen_kwargs)
-        prediction = tokenizer.decode(generated[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True)
-        pred_answer = extract_final_answer(prediction)
-        output_tokens = len(prediction.split())
-        outputs.append(
-            {
-                "id": row.get("id"),
-                "gold_answer": gold,
-                "prediction": prediction,
-                "pred_answer": pred_answer,
-                "is_correct": answers_match(pred_answer, gold) if gold is not None else None,
-                "output_tokens": output_tokens,
-            }
-        )
+        prompt_width = inputs["input_ids"].shape[1]
+        predictions = tokenizer.batch_decode(generated[:, prompt_width:], skip_special_tokens=True)
+        for row, gold, prediction in zip(batch_rows, golds, predictions):
+            pred_answer = extract_final_answer(prediction)
+            output_tokens = len(prediction.split())
+            outputs.append(
+                {
+                    "id": row.get("id"),
+                    "gold_answer": gold,
+                    "prediction": prediction,
+                    "pred_answer": pred_answer,
+                    "is_correct": answers_match(pred_answer, gold) if gold is not None else None,
+                    "output_tokens": output_tokens,
+                }
+            )
 
     correct = [row for row in outputs if row["is_correct"] is True]
     summary = {
@@ -151,6 +162,8 @@ def main() -> None:
         "correct": len(correct),
         "accuracy": len(correct) / len(outputs) if outputs else 0.0,
         "avg_output_tokens": mean([row["output_tokens"] for row in outputs]) if outputs else 0.0,
+        "max_new_tokens": max_new_tokens,
+        "batch_size": batch_size,
         "model_dir": str(model_dir),
         "eval_file": str(eval_file),
     }

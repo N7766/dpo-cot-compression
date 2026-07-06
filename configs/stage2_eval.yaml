@@ -9,8 +9,9 @@ data:
   max_samples: null
 
 generation:
-  max_new_tokens: 512
+  max_new_tokens: 128
   temperature: 0.0
+  batch_size: 4
 
 paths:
   output_file: outputs/results/stage2_lora_dpo/val_eval.json
