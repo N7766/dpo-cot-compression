@@ -54,14 +54,19 @@ def main() -> None:
     if args.dry_run:
         print("Dry run complete. No files were uploaded.")
         return
-    if not os.environ.get("HF_TOKEN"):
-        raise RuntimeError("HF_TOKEN is required. Please run: export HF_TOKEN=your_token")
     if not model_dir.exists():
         raise FileNotFoundError(f"Model directory does not exist: {model_dir}")
 
-    from huggingface_hub import HfApi
+    from huggingface_hub import HfApi, get_token
 
-    api = HfApi(token=os.environ["HF_TOKEN"])
+    token = os.environ.get("HF_TOKEN") or get_token()
+    if not token:
+        raise RuntimeError(
+            "A Hugging Face token is required. Please run: export HF_TOKEN=your_token "
+            "or login with: hf auth login"
+        )
+
+    api = HfApi(token=token)
     api.create_repo(repo_id=repo_id, repo_type="model", private=private, exist_ok=True)
     api.upload_folder(
         folder_path=str(model_dir),
