@@ -289,7 +289,7 @@ Suggested Stage 3 SFT starting point:
 | LoRA dropout | 0.05 |
 | SFT max length | 1024 |
 | SFT per-device batch size | 1 or 2 |
-| SFT gradient accumulation | 8 or 16 |
+| SFT gradient accumulation | 8 for 2-GPU run |
 | SFT learning rate | 1e-5 to 2e-5 |
 | SFT epochs | 1 |
 | DPO beta | 0.1 initially |
