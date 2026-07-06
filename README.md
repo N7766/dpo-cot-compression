@@ -212,6 +212,8 @@ Stage 2 will train and evaluate the compression model using the Stage 1 DPO trai
 
 Stage 2 training layout and naming plan: [`docs/STAGE2_PLAN.md`](docs/STAGE2_PLAN.md)
 
+Concise Stage 2/3 experiment report: [`docs/STAGE2_3_REPORT.md`](docs/STAGE2_3_REPORT.md)
+
 Planned Stage 2 configs:
 
 - `configs/stage2_lora_dpo.yaml`
