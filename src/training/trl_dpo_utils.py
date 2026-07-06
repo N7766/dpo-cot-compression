@@ -16,7 +16,11 @@ from src.utils.io import load_yaml
 
 def load_stage2_config(path: str | Path) -> dict[str, Any]:
     cfg = load_yaml(path)
-    for section in ["experiment", "model", "data", "dpo", "training", "paths"]:
+    required = ["experiment", "model", "data", "training", "paths"]
+    method = cfg.get("experiment", {}).get("method")
+    if method in {"lora_dpo", "full_dpo"}:
+        required.append("dpo")
+    for section in required:
         if section not in cfg:
             raise ValueError(f"Missing required config section: {section}")
     return cfg

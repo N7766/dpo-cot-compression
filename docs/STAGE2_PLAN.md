@@ -301,6 +301,33 @@ The first Stage 3 run should be a small smoke test before full training:
 SFT smoke test -> free-form eval sample -> full SFT -> free-form eval -> DPO from SFT adapter
 ```
 
+Stage 3 data/config/script files:
+
+| Purpose | Path |
+| --- | --- |
+| Build Stage 3 data | `configs/stage3_build_data.yaml` |
+| LoRA SFT config | `configs/stage3_lora_sft.yaml` |
+| LoRA DPO-from-SFT config | `configs/stage3_lora_dpo.yaml` |
+| Build Stage 3 data script | `scripts/16_build_stage3_data.py` |
+| Train Stage 3 LoRA SFT script | `scripts/17_train_lora_sft.py` |
+
+Current Stage 3 data build:
+
+| Split | SFT rows | Strict DPO rows | Avg SFT tokens | Avg rejected tokens | Avg compression |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Train | 4048 | 2894 | 38.69 | 160.69 | 0.7168 |
+| Validation | 451 | 320 | 38.18 | 171.47 | 0.7322 |
+
+Stage 3 commands:
+
+```bash
+python scripts/16_build_stage3_data.py --config configs/stage3_build_data.yaml
+python scripts/17_train_lora_sft.py --config configs/stage3_lora_sft.yaml --dry_run
+python scripts/17_train_lora_sft.py --config configs/stage3_lora_sft.yaml --max_steps 5
+python scripts/17_train_lora_sft.py --config configs/stage3_lora_sft.yaml
+python scripts/07_train_lora_dpo.py --config configs/stage3_lora_dpo.yaml
+```
+
 ## 9. Original Training Pipeline Notes
 
 LoRA+DPO first:

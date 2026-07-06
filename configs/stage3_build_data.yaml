@@ -1,0 +1,16 @@
+inputs:
+  dpo_train_file: data/preference/stage1_gsm8k_qwen3_rejected_glm52_chosen_train.jsonl
+  dpo_val_file: data/preference/stage1_gsm8k_qwen3_rejected_glm52_chosen_val.jsonl
+
+outputs:
+  sft_train_file: data/preference/stage3_sft_glm52_chosen_train.jsonl
+  sft_val_file: data/preference/stage3_sft_glm52_chosen_val.jsonl
+  dpo_train_file: data/preference/stage3_dpo_strict_qwen3_rejected_glm52_chosen_train.jsonl
+  dpo_val_file: data/preference/stage3_dpo_strict_qwen3_rejected_glm52_chosen_val.jsonl
+  summary_file: outputs/results/stage3_data_build_summary.json
+
+filters:
+  require_answer_tag: true
+  max_chosen_tokens: 80
+  min_rejected_tokens: 80
+  min_compression_ratio: 0.30

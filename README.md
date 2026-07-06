@@ -220,6 +220,46 @@ Planned Stage 2 configs:
 - `configs/stage2_serve.yaml`
 - `configs/stage2_upload.yaml`
 
+## Stage 3: SFT Warm-Up + DPO
+
+Stage 3 is introduced after the Stage 2 direct LoRA DPO run showed good DPO validation loss but poor free-form answer accuracy. The revised route first teaches the model the concise teacher-answer format with supervised fine-tuning, then continues with DPO.
+
+Build Stage 3 SFT and stricter DPO data:
+
+```bash
+python scripts/16_build_stage3_data.py --config configs/stage3_build_data.yaml
+```
+
+Run a no-model SFT dry run:
+
+```bash
+python scripts/17_train_lora_sft.py --config configs/stage3_lora_sft.yaml --dry_run
+```
+
+Start LoRA SFT warm-up:
+
+```bash
+python scripts/17_train_lora_sft.py --config configs/stage3_lora_sft.yaml
+```
+
+For a short remote smoke test:
+
+```bash
+python scripts/17_train_lora_sft.py --config configs/stage3_lora_sft.yaml --max_steps 5
+```
+
+After SFT evaluation, continue DPO from the SFT adapter:
+
+```bash
+python scripts/07_train_lora_dpo.py --config configs/stage3_lora_dpo.yaml
+```
+
+Stage 3 configs:
+
+- `configs/stage3_build_data.yaml`
+- `configs/stage3_lora_sft.yaml`
+- `configs/stage3_lora_dpo.yaml`
+
 Planned training outputs remain ignored by git under:
 
 - `outputs/checkpoints/stage2_lora_dpo/`

@@ -87,10 +87,16 @@ def main() -> None:
     dpo_args = DPOConfig(**filter_config_kwargs(DPOConfig, dpo_kwargs))
     peft_config = build_peft_config(cfg)
 
+    adapter_path = cfg["model"].get("adapter_name_or_path")
     model = AutoModelForCausalLM.from_pretrained(
         cfg["model"]["base_model_name_or_path"],
         **init_kwargs,
     )
+    if adapter_path:
+        from peft import PeftModel
+
+        print(f"Loading trainable LoRA adapter for DPO warm-start: {adapter_path}")
+        model = PeftModel.from_pretrained(model, adapter_path, is_trainable=True)
     if cfg["training"].get("gradient_checkpointing", True):
         model.config.use_cache = False
 
@@ -101,7 +107,7 @@ def main() -> None:
         train_dataset=dataset["train"],
         eval_dataset=dataset["validation"],
         processing_class=tokenizer,
-        peft_config=peft_config,
+        peft_config=None if adapter_path else peft_config,
         callbacks=[GpuMemoryCallback(gpu_memory_log_path(cfg))],
     )
     trainer.train()
