@@ -38,6 +38,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max_steps", type=int, default=None, help="Override max_steps for smoke testing.")
     parser.add_argument("--max_train_samples", type=int, default=None, help="Use a small train subset for smoke testing.")
     parser.add_argument("--max_eval_samples", type=int, default=None, help="Use a small validation subset for smoke testing.")
+    parser.add_argument("--select_longest_samples", action="store_true", help="Use the longest examples before applying sample limits.")
+    parser.add_argument("--max_length", type=int, default=None, help="Override DPO max_length for memory testing.")
+    parser.add_argument("--max_prompt_length", type=int, default=None, help="Override DPO max_prompt_length for memory testing.")
+    parser.add_argument("--per_device_train_batch_size", type=int, default=None, help="Override per-device train batch size.")
+    parser.add_argument("--gradient_accumulation_steps", type=int, default=None, help="Override gradient accumulation steps.")
+    parser.add_argument("--skip_save", action="store_true", help="Do not save the model after training; useful for smoke tests.")
     return parser.parse_args()
 
 
@@ -48,11 +54,27 @@ def main() -> None:
     if cfg["experiment"].get("method") != "full_dpo":
         raise ValueError("This script expects experiment.method: full_dpo")
 
+    if args.max_length is not None:
+        cfg["data"]["max_length"] = int(args.max_length)
+    if args.max_prompt_length is not None:
+        cfg["data"]["max_prompt_length"] = int(args.max_prompt_length)
+    if args.per_device_train_batch_size is not None:
+        cfg["training"]["per_device_train_batch_size"] = int(args.per_device_train_batch_size)
+    if args.gradient_accumulation_steps is not None:
+        cfg["training"]["gradient_accumulation_steps"] = int(args.gradient_accumulation_steps)
+
     require_training_files(cfg)
     prepare_output_dirs(cfg)
     print_training_banner(cfg, "full-parameter")
 
     dataset = load_preference_datasets(cfg)
+    if args.select_longest_samples:
+        def add_sort_len(row: dict) -> dict:
+            return {"_sort_len": len(row["prompt"]) + max(len(row["chosen"]), len(row["rejected"]))}
+
+        dataset = dataset.map(add_sort_len)
+        dataset["train"] = dataset["train"].sort("_sort_len", reverse=True).remove_columns("_sort_len")
+        dataset["validation"] = dataset["validation"].sort("_sort_len", reverse=True).remove_columns("_sort_len")
     if args.max_train_samples is not None:
         n = min(args.max_train_samples, len(dataset["train"]))
         dataset["train"] = dataset["train"].select(range(n))
@@ -82,6 +104,8 @@ def main() -> None:
     dpo_kwargs["fsdp"] = cfg["training"].get("fsdp")
     dpo_kwargs["fsdp_config"] = cfg["training"].get("fsdp_config")
     dpo_kwargs["activation_offloading"] = bool(cfg["dpo"].get("activation_offloading", False))
+    if args.skip_save:
+        dpo_kwargs["save_strategy"] = "no"
     dpo_args = DPOConfig(**filter_config_kwargs(DPOConfig, dpo_kwargs))
 
     model = AutoModelForCausalLM.from_pretrained(
@@ -101,8 +125,11 @@ def main() -> None:
         callbacks=[GpuMemoryCallback(gpu_memory_log_path(cfg))],
     )
     trainer.train()
-    trainer.save_model(cfg["paths"]["output_dir"])
-    tokenizer.save_pretrained(cfg["paths"]["output_dir"])
+    if args.skip_save:
+        print("Skipping model save because --skip_save was set.")
+    else:
+        trainer.save_model(cfg["paths"]["output_dir"])
+        tokenizer.save_pretrained(cfg["paths"]["output_dir"])
 
 
 if __name__ == "__main__":
