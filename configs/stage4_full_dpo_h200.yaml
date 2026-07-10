@@ -35,7 +35,9 @@ training:
   warmup_ratio: 0.03
   weight_decay: 0.0
   lr_scheduler_type: cosine
-  gradient_checkpointing: true
+  # Use FSDP activation checkpointing below. Transformers does not allow this
+  # flag and fsdp_config.activation_checkpointing to be enabled together.
+  gradient_checkpointing: false
   gradient_checkpointing_kwargs:
     use_reentrant: false
   bf16: true

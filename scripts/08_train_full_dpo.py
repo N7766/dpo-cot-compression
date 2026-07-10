@@ -112,7 +112,10 @@ def main() -> None:
         cfg["model"]["base_model_name_or_path"],
         **init_kwargs,
     )
-    if cfg["training"].get("gradient_checkpointing", True):
+    fsdp_activation_checkpointing = bool(
+        (cfg["training"].get("fsdp_config") or {}).get("activation_checkpointing", False)
+    )
+    if cfg["training"].get("gradient_checkpointing", True) or fsdp_activation_checkpointing:
         model.config.use_cache = False
 
     trainer = DPOTrainer(
