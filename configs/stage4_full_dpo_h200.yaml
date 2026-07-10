@@ -46,7 +46,6 @@ training:
   fsdp_config:
     transformer_layer_cls_to_wrap:
       - Qwen3DecoderLayer
-      - Qwen2DecoderLayer
     backward_prefetch: backward_pre
     forward_prefetch: false
     use_orig_params: true
