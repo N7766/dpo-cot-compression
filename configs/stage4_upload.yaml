@@ -1,0 +1,14 @@
+model:
+  model_dir: outputs/checkpoints/stage4_full_dpo_h200/qwen3_8b_gsm8k_cot_compression_full_dpo_h200
+
+hub:
+  repo_id: N7766/qwen3-8b-gsm8k-cot-compression-full-dpo-stage4
+  private: false
+  commit_message: Upload Stage 4 full-parameter DPO model
+  ignore_patterns:
+    - checkpoint-*/
+    - optimizer.pt
+    - scheduler.pt
+    - rng_state*.pth
+    - trainer_state.json
+    - training_args.bin
