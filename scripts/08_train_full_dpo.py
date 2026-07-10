@@ -35,6 +35,9 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="configs/stage2_full_dpo.yaml")
     parser.add_argument("--dry_run", action="store_true", help="Load config/data only; do not load the model or train.")
+    parser.add_argument("--max_steps", type=int, default=None, help="Override max_steps for smoke testing.")
+    parser.add_argument("--max_train_samples", type=int, default=None, help="Use a small train subset for smoke testing.")
+    parser.add_argument("--max_eval_samples", type=int, default=None, help="Use a small validation subset for smoke testing.")
     return parser.parse_args()
 
 
@@ -50,6 +53,12 @@ def main() -> None:
     print_training_banner(cfg, "full-parameter")
 
     dataset = load_preference_datasets(cfg)
+    if args.max_train_samples is not None:
+        n = min(args.max_train_samples, len(dataset["train"]))
+        dataset["train"] = dataset["train"].select(range(n))
+    if args.max_eval_samples is not None:
+        n = min(args.max_eval_samples, len(dataset["validation"]))
+        dataset["validation"] = dataset["validation"].select(range(n))
     print(f"Train rows: {len(dataset['train'])}")
     print(f"Validation rows: {len(dataset['validation'])}")
     print(f"FSDP: {cfg['training'].get('fsdp')}")
@@ -69,7 +78,7 @@ def main() -> None:
 
     tokenizer = load_tokenizer(cfg)
     init_kwargs = model_init_kwargs(cfg)
-    dpo_kwargs = common_dpo_config_kwargs(cfg)
+    dpo_kwargs = common_dpo_config_kwargs(cfg, max_steps=args.max_steps)
     dpo_kwargs["fsdp"] = cfg["training"].get("fsdp")
     dpo_kwargs["fsdp_config"] = cfg["training"].get("fsdp_config")
     dpo_kwargs["activation_offloading"] = bool(cfg["dpo"].get("activation_offloading", False))

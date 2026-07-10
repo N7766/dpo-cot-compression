@@ -128,14 +128,14 @@ def config_value(cfg: dict[str, Any], section: str, key: str, default: Any = Non
     return cfg.get(section, {}).get(key, default)
 
 
-def common_dpo_config_kwargs(cfg: dict[str, Any]) -> dict[str, Any]:
+def common_dpo_config_kwargs(cfg: dict[str, Any], max_steps: int | None = None) -> dict[str, Any]:
     training = cfg["training"]
     dpo = cfg["dpo"]
     data = cfg["data"]
     paths = cfg["paths"]
     hub = cfg.get("hub", {})
 
-    return {
+    kwargs = {
         "output_dir": paths["output_dir"],
         "logging_dir": paths["logging_dir"],
         "run_name": cfg["experiment"]["name"],
@@ -171,6 +171,10 @@ def common_dpo_config_kwargs(cfg: dict[str, Any]) -> dict[str, Any]:
         "model_init_kwargs": model_init_kwargs(cfg),
         "trust_remote_code": bool(cfg["model"].get("trust_remote_code", True)),
     }
+    if max_steps is not None:
+        kwargs["max_steps"] = int(max_steps)
+        kwargs["num_train_epochs"] = 1
+    return kwargs
 
 
 def filter_config_kwargs(config_cls: type, kwargs: dict[str, Any]) -> dict[str, Any]:
