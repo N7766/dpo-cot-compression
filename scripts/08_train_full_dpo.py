@@ -43,6 +43,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max_prompt_length", type=int, default=None, help="Override DPO max_prompt_length for memory testing.")
     parser.add_argument("--per_device_train_batch_size", type=int, default=None, help="Override per-device train batch size.")
     parser.add_argument("--gradient_accumulation_steps", type=int, default=None, help="Override gradient accumulation steps.")
+    parser.add_argument(
+        "--disable_precompute_ref_log_probs",
+        action="store_true",
+        help="Disable reference log-prob precomputation for compatibility smoke tests.",
+    )
     parser.add_argument("--skip_save", action="store_true", help="Do not save the model after training; useful for smoke tests.")
     return parser.parse_args()
 
@@ -62,6 +67,8 @@ def main() -> None:
         cfg["training"]["per_device_train_batch_size"] = int(args.per_device_train_batch_size)
     if args.gradient_accumulation_steps is not None:
         cfg["training"]["gradient_accumulation_steps"] = int(args.gradient_accumulation_steps)
+    if args.disable_precompute_ref_log_probs:
+        cfg["dpo"]["precompute_ref_log_probs"] = False
 
     require_training_files(cfg)
     prepare_output_dirs(cfg)
