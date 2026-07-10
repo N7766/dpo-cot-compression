@@ -119,6 +119,17 @@ def main() -> None:
         cfg["model"]["base_model_name_or_path"],
         **init_kwargs,
     )
+    if cfg["dpo"].get("precompute_ref_log_probs", False):
+        # TRL precomputes reference log-probs during DPOTrainer initialization,
+        # before Trainer/FSDP moves the model. Move each rank's temporary
+        # precompute model to its local GPU to avoid CPU/GPU device mismatches.
+        import os
+        import torch
+
+        if torch.cuda.is_available():
+            local_rank = int(os.environ.get("LOCAL_RANK", "0"))
+            model.to(torch.device("cuda", local_rank))
+
     fsdp_activation_checkpointing = bool(
         (cfg["training"].get("fsdp_config") or {}).get("activation_checkpointing", False)
     )
