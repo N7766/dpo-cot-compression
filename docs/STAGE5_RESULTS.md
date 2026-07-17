@@ -34,3 +34,23 @@ Compared with Stage 3:
 | Avg output tokens | 32.42 | 31.53 | -0.89 |
 
 Conclusion: a short conservative DPO pass from the Stage 3 SFT adapter improves accuracy slightly while reducing output length. Longer or higher-beta DPO runs did not improve the accuracy-length tradeoff in this sweep.
+
+## Full Checkpoint Ranking
+
+Accuracy target: 93.0%.
+
+| Rank | Run | Accuracy | Correct | Avg tokens | Meets target |
+|---:|---|---:|---:|---:|---|
+| 1 | `stage5_lora_dpo_sft_lr1e-6_beta003_steps50/checkpoint-50` | 95.67% | 442 | 31.53 | yes |
+| 2 | `stage5_lora_dpo_sft_lr1e-6_beta003_steps50/final` | 95.67% | 442 | 31.53 | yes |
+| 3 | `stage5_lora_dpo_sft_lr5e-7_beta003_steps100/checkpoint-75` | 95.45% | 441 | 31.35 | yes |
+| 4 | `stage5_lora_dpo_sft_lr1e-6_beta003_steps50/checkpoint-25` | 95.24% | 440 | 31.90 | yes |
+| 5 | `stage5_lora_dpo_sft_lr5e-7_beta003_steps100/checkpoint-100` | 95.02% | 439 | 31.39 | yes |
+| 6 | `stage5_lora_dpo_sft_lr5e-7_beta003_steps100/final` | 95.02% | 439 | 31.39 | yes |
+| 7 | `stage5_lora_dpo_sft_lr5e-7_beta005_steps100/checkpoint-100` | 95.02% | 439 | 31.50 | yes |
+| 8 | `stage5_lora_dpo_sft_lr5e-7_beta005_steps100/final` | 95.02% | 439 | 31.50 | yes |
+| 9 | `stage5_lora_dpo_sft_lr5e-7_beta003_steps100/checkpoint-50` | 95.02% | 439 | 31.76 | yes |
+| 10 | `stage5_lora_dpo_sft_lr5e-7_beta005_steps100/checkpoint-50` | 94.81% | 438 | 31.75 | yes |
+| 11 | `stage5_lora_dpo_sft_lr5e-7_beta005_steps100/checkpoint-75` | 94.59% | 437 | 31.36 | yes |
+| 12 | `stage5_lora_dpo_sft_lr5e-7_beta005_steps100/checkpoint-25` | 94.59% | 437 | 31.85 | yes |
+| 13 | `stage5_lora_dpo_sft_lr5e-7_beta003_steps100/checkpoint-25` | 94.59% | 437 | 31.85 | yes |
