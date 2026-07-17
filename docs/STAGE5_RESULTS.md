@@ -35,6 +35,18 @@ Compared with Stage 3:
 
 Conclusion: a short conservative DPO pass from the Stage 3 SFT adapter improves accuracy slightly while reducing output length. Longer or higher-beta DPO runs did not improve the accuracy-length tradeoff in this sweep.
 
+## Full-DPO Follow-Up
+
+Additional full-parameter DPO runs were tested on 2xH200 with FSDP, reference log-prob precomputation, and conservative learning rates. These runs were initialized from `Qwen/Qwen3-8B` rather than the Stage 3 LoRA-SFT adapter.
+
+| Run | LR | Beta | Steps | Best checkpoint | Accuracy | Avg output tokens |
+|---|---:|---:|---:|---:|---:|---:|
+| `stage5_full_dpo_base_lr1e-7_beta003_steps50` | 1e-7 | 0.03 | 50 | 25 | 32.03% | 77.92 |
+| `stage5_full_dpo_base_lr5e-8_beta003_steps25` | 5e-8 | 0.03 | 25 | 25/final | 31.17% | 77.50 |
+| `stage5_full_dpo_base_lr1e-8_beta003_steps25` | 1e-8 | 0.03 | 25 | 25/final | 31.39% | 78.04 |
+
+Full-DPO remained unstable even after reducing the learning rate by an order of magnitude. The preference objective did not translate into free-generation GSM8K accuracy, while the output length also increased substantially. These results support using the Stage 5 LoRA-DPO route as the main DPO result.
+
 ## Full Checkpoint Ranking
 
 Accuracy target: 93.0%.
