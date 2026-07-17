@@ -35,6 +35,10 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="configs/stage2_lora_dpo.yaml")
     parser.add_argument("--dry_run", action="store_true", help="Load config/data only; do not load the model or train.")
+    parser.add_argument("--max_steps", type=int, default=None, help="Override max_steps for sweep/smoke runs.")
+    parser.add_argument("--max_train_samples", type=int, default=None, help="Use a small train subset for smoke testing.")
+    parser.add_argument("--max_eval_samples", type=int, default=None, help="Use a small validation subset for smoke testing.")
+    parser.add_argument("--skip_save", action="store_true", help="Do not save the adapter after training; useful for smoke tests.")
     return parser.parse_args()
 
 
@@ -67,6 +71,12 @@ def main() -> None:
     print_training_banner(cfg, "LoRA")
 
     dataset = load_preference_datasets(cfg)
+    if args.max_train_samples is not None:
+        n = min(args.max_train_samples, len(dataset["train"]))
+        dataset["train"] = dataset["train"].select(range(n))
+    if args.max_eval_samples is not None:
+        n = min(args.max_eval_samples, len(dataset["validation"]))
+        dataset["validation"] = dataset["validation"].select(range(n))
     print(f"Train rows: {len(dataset['train'])}")
     print(f"Validation rows: {len(dataset['validation'])}")
     print(f"LoRA rank: {cfg['lora']['r']}")
@@ -83,7 +93,9 @@ def main() -> None:
 
     tokenizer = load_tokenizer(cfg)
     init_kwargs = model_init_kwargs(cfg)
-    dpo_kwargs = common_dpo_config_kwargs(cfg)
+    dpo_kwargs = common_dpo_config_kwargs(cfg, max_steps=args.max_steps)
+    if args.skip_save:
+        dpo_kwargs["save_strategy"] = "no"
     dpo_args = DPOConfig(**filter_config_kwargs(DPOConfig, dpo_kwargs))
     peft_config = build_peft_config(cfg)
 
@@ -96,7 +108,15 @@ def main() -> None:
         from peft import PeftModel
 
         print(f"Loading trainable LoRA adapter for DPO warm-start: {adapter_path}")
-        model = PeftModel.from_pretrained(model, adapter_path, is_trainable=True)
+        model = PeftModel.from_pretrained(
+            model,
+            adapter_path,
+            adapter_name="train",
+            is_trainable=True,
+        )
+        print(f"Loading frozen LoRA reference adapter for DPO: {adapter_path}")
+        model.load_adapter(adapter_path, adapter_name="ref", is_trainable=False)
+        model.set_adapter("train")
     if cfg["training"].get("gradient_checkpointing", True):
         model.config.use_cache = False
 
@@ -111,8 +131,11 @@ def main() -> None:
         callbacks=[GpuMemoryCallback(gpu_memory_log_path(cfg))],
     )
     trainer.train()
-    trainer.save_model(cfg["paths"]["output_dir"])
-    tokenizer.save_pretrained(cfg["paths"]["output_dir"])
+    if args.skip_save:
+        print("Skipping model save because --skip_save was set.")
+    else:
+        trainer.save_model(cfg["paths"]["output_dir"])
+        tokenizer.save_pretrained(cfg["paths"]["output_dir"])
 
 
 if __name__ == "__main__":

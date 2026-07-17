@@ -171,8 +171,9 @@ def common_dpo_config_kwargs(cfg: dict[str, Any], max_steps: int | None = None) 
         "model_init_kwargs": model_init_kwargs(cfg),
         "trust_remote_code": bool(cfg["model"].get("trust_remote_code", True)),
     }
-    if max_steps is not None:
-        kwargs["max_steps"] = int(max_steps)
+    configured_max_steps = max_steps if max_steps is not None else training.get("max_steps")
+    if configured_max_steps is not None:
+        kwargs["max_steps"] = int(configured_max_steps)
         kwargs["num_train_epochs"] = 1
     return kwargs
 

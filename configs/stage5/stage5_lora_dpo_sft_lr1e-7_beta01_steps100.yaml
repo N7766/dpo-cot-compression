@@ -1,0 +1,73 @@
+experiment:
+  name: stage5_lora_dpo_sft_lr1e-7_beta01_steps100
+  stage: stage5
+  method: lora_dpo
+  seed: 42
+
+model:
+  base_model_name_or_path: Qwen/Qwen3-8B
+  adapter_name_or_path: N7766/qwen3-8b-gsm8k-cot-compression-lora-sft-stage3
+  trust_remote_code: true
+  torch_dtype: bfloat16
+  attn_implementation: sdpa
+
+data:
+  train_file: data/preference/stage3_dpo_strict_qwen3_rejected_glm52_chosen_train.jsonl
+  val_file: data/preference/stage3_dpo_strict_qwen3_rejected_glm52_chosen_val.jsonl
+  prompt_field: prompt
+  chosen_field: chosen
+  rejected_field: rejected
+  max_prompt_length: 512
+  max_length: 2048
+
+lora:
+  r: 8
+  alpha: 16
+  dropout: 0.05
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+
+dpo:
+  beta: 0.1
+  loss_type: sigmoid
+  precompute_ref_log_probs: false
+  precompute_ref_batch_size: null
+
+training:
+  max_steps: 100
+  num_train_epochs: 1
+  per_device_train_batch_size: 1
+  per_device_eval_batch_size: 1
+  gradient_accumulation_steps: 8
+  learning_rate: 1.0e-7
+  warmup_ratio: 0.03
+  weight_decay: 0.0
+  lr_scheduler_type: cosine
+  gradient_checkpointing: true
+  gradient_checkpointing_kwargs:
+    use_reentrant: false
+  bf16: true
+  fp16: false
+  optim: adamw_torch
+  logging_steps: 5
+  eval_steps: 25
+  save_steps: 25
+  save_total_limit: 4
+  report_to: []
+
+paths:
+  output_dir: outputs/checkpoints/stage5_lora_dpo/stage5_lora_dpo_sft_lr1e-7_beta01_steps100
+  merged_output_dir: outputs/checkpoints/stage5_lora_dpo/stage5_lora_dpo_sft_lr1e-7_beta01_steps100_merged
+  logging_dir: outputs/logs/stage5_lora_dpo/stage5_lora_dpo_sft_lr1e-7_beta01_steps100
+  metrics_dir: outputs/results/stage5_lora_dpo/stage5_lora_dpo_sft_lr1e-7_beta01_steps100
+  eval_generation_dir: outputs/generations/stage5_eval/stage5_lora_dpo_sft_lr1e-7_beta01_steps100
+
+hub:
+  push_to_hub: false
+  repo_id: null
