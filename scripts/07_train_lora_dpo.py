@@ -111,12 +111,12 @@ def main() -> None:
         model = PeftModel.from_pretrained(
             model,
             adapter_path,
-            adapter_name="train",
+            adapter_name="policy",
             is_trainable=True,
         )
         print(f"Loading frozen LoRA reference adapter for DPO: {adapter_path}")
         model.load_adapter(adapter_path, adapter_name="ref", is_trainable=False)
-        model.set_adapter("train")
+        model.set_adapter("policy")
     if cfg["training"].get("gradient_checkpointing", True):
         model.config.use_cache = False
 
