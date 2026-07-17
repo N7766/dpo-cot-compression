@@ -1,0 +1,16 @@
+model:
+  model_dir: outputs/checkpoints/stage5_lora_dpo/stage5_lora_dpo_sft_lr1e-6_beta003_steps50/checkpoint-50
+
+hub:
+  repo_id: N7766/qwen3-8b-gsm8k-cot-compression-lora-dpo-stage5
+  private: false
+  commit_message: Upload Stage 5 best LoRA DPO adapter
+  ignore_patterns:
+    - checkpoint-*/
+    - ref/
+    - ref/**
+    - optimizer.pt
+    - scheduler.pt
+    - rng_state*.pth
+    - trainer_state.json
+    - training_args.bin
