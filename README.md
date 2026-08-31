@@ -99,6 +99,38 @@ Backend: Hugging Face API
 
 Correct nontrivial samples are used as candidate rejected responses for future DPO preference construction. Answer-only outputs are excluded because they are already compressed. Incorrect or very long overthinking failures are kept for separate analysis and excluded from preference data for now.
 
+## Final Controlled Evaluation Protocol
+
+The original Stage 1 API run, preference construction, and later validation results use different prompts and subsets. They must not be treated as a direct base-model compression comparison.
+
+Before making a final dissertation claim, run the locked post-selection protocol on GPU. It evaluates the base `Qwen/Qwen3-8B`, the Stage 3 LoRA-SFT adapter, and the selected Stage 5 LoRA-DPO adapter on the same GSM8K test IDs, with deterministic decoding and two prompt modes that do not ask for a brief response. The first 100 test IDs are excluded because they were inspected in the original Stage 1 baseline.
+
+Prepare the complete test file:
+
+```bash
+python scripts/01_prepare_gsm8k.py --config configs/final_gsm8k_test.yaml
+```
+
+Run a small GPU smoke test first:
+
+```bash
+python scripts/20_run_final_controlled_eval.py \
+  --config configs/final_controlled_eval.yaml \
+  --max_samples 3
+```
+
+Run the locked full evaluation once all smoke-test output is checked:
+
+```bash
+python scripts/20_run_final_controlled_eval.py \
+  --config configs/final_controlled_eval.yaml
+
+python scripts/21_analyze_final_controlled_eval.py \
+  --config configs/final_controlled_eval.yaml
+```
+
+Generation files are append-only JSONL and resume by `id`. The final analysis reports tokenizer-level completion lengths, answer-tag/completion rates, cap hits, paired McNemar accuracy tests, and bootstrap confidence intervals for the token-length difference against the base model.
+
 Generated Stage 1 files are intentionally ignored by git:
 
 - `outputs/generations/baseline_qwen3_8b_gsm8k.jsonl`

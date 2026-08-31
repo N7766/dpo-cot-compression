@@ -1,0 +1,11 @@
+# Creates a complete local copy of the official GSM8K test split. The final
+# evaluator excludes test_0 through test_99 because they were inspected during
+# the original Stage 1 API smoke/baseline run.
+data:
+  dataset_name: openai/gsm8k
+  dataset_config: main
+  split: test
+  max_samples: null
+
+paths:
+  input_file: data/processed/gsm8k_test_full.jsonl

@@ -1,0 +1,73 @@
+# Locked protocol for the post-selection dissertation evaluation.
+# Do not tune model hyperparameters or prompt wording after reading these results.
+experiment:
+  name: gsm8k_final_controlled_eval_v1
+  purpose: >-
+    Compare the original base model and selected adapters on the same official
+    GSM8K test questions under fixed decoding and prompt conditions.
+
+data:
+  input_file: data/processed/gsm8k_test_full.jsonl
+  # The first 100 test IDs were inspected in Stage 1. They remain in the
+  # processed file for provenance, but are excluded from this final evaluation.
+  skip_first_n: 100
+  max_samples: null
+
+model_defaults:
+  base_model_name_or_path: Qwen/Qwen3-8B
+  revision: main
+  torch_dtype: bfloat16
+  trust_remote_code: true
+  attn_implementation: sdpa
+
+models:
+  - id: base_qwen3_8b
+    kind: base
+    source: Qwen/Qwen3-8B
+    revision: b968826d9c46dd6066d109eabc6255188de91218
+  - id: stage3_lora_sft
+    kind: adapter
+    source: N7766/qwen3-8b-gsm8k-cot-compression-lora-sft-stage3
+    revision: 074afd380a18540b84bd366fa10c1e6fca33f5cf
+  - id: stage5_lora_dpo
+    kind: adapter
+    source: N7766/qwen3-8b-gsm8k-cot-compression-lora-dpo-stage5
+    revision: d83441981106b05fa4e42b275520c62da7b6873a
+
+# Both prompts are evaluated for every model. Neither prompt contains the word
+# "briefly", so a short response cannot be attributed to an explicit brevity
+# instruction. The detailed prompt matches the DPO pair prompt.
+prompts:
+  - id: neutral
+    template: |-
+      Solve the following math problem.
+
+      End with the final answer exactly in this format:
+
+      Answer: <number>
+
+      Question:
+      {question}
+  - id: detailed_reasoning
+    template: |-
+      Solve the following math problem.
+
+      Think carefully and explain the reasoning before giving the final answer.
+
+      End with the final answer exactly in this format:
+
+      Answer: <number>
+
+      Question:
+      {question}
+
+generation:
+  max_new_tokens: 256
+  temperature: 0.0
+  top_p: 1.0
+  batch_size: 16
+
+paths:
+  output_dir: outputs/results/final_controlled_eval
+  analysis_output: outputs/results/final_controlled_eval/analysis.json
+  analysis_markdown: outputs/results/final_controlled_eval/analysis.md
