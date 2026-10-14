@@ -1,5 +1,15 @@
 # DPO-based Chain-of-Thought Compression
 
+## 项目展示入口
+
+本项目包含偏好数据构建、SFT / DPO 训练配置及检查点评估。
+
+**[查看结果与证据边界](docs/PORTFOLIO.md)** · [数值摘要](docs/portfolio/experiment-summary.json) · [配套 LabLens 实验分析 Agent](https://github.com/N7766/lablens-agent)
+
+已记录的验证集对比：LoRA-SFT 439/462，SFT 初始化 LoRA-DPO 442/462；输出长度按空格切分的词数计算。该验证集参与检查点选择，详细结果与限制见上方概览。
+
+下文保留各阶段的英文说明与运行命令。
+
 MSc dissertation project studying whether Direct Preference Optimization (DPO) can compress chain-of-thought style mathematical reasoning while preserving answer accuracy.
 
 ## Project Goal

@@ -1,0 +1,44 @@
+{
+  "scope": "validation-selected checkpoints; not an independent test result",
+  "runs": [
+    {
+      "id": "run:sft",
+      "label": "LoRA-SFT",
+      "correct": 439,
+      "num_samples": 462,
+      "accuracy": 0.9502164502164502,
+      "mean_length": 32.422077922077925,
+      "length_unit": "whitespace_words",
+      "split_id": "gsm8k_preference_validation_462",
+      "used_for_checkpoint_selection": true,
+      "source_path": "outputs/results/stage3_lora_sft/val_eval_full_b32.summary.json"
+    },
+    {
+      "id": "run:dpo-best",
+      "label": "stage5_lora_dpo_sft_lr1e-6_beta003_steps50/checkpoint-50",
+      "correct": 442,
+      "num_samples": 462,
+      "accuracy": 0.9567099567099567,
+      "mean_length": 31.528138528138527,
+      "length_unit": "whitespace_words",
+      "split_id": "gsm8k_preference_validation_462",
+      "used_for_checkpoint_selection": true,
+      "source_path": "outputs/results/stage5_lora_dpo/stage5_lora_dpo_sft_lr1e-6_beta003_steps50/checkpoint_evals/checkpoint-50_eval.summary.json"
+    }
+  ],
+  "source_files": [
+    {
+      "path": "outputs/results/stage3_lora_sft/val_eval_full_b32.summary.json",
+      "sha256": "44f222386666e80518d3cd4e2a3f5e98e4cca6d7e35d12b19ba33dc9d2965388"
+    },
+    {
+      "path": "outputs/results/stage5_lora_dpo/stage5_lora_dpo_sft_lr1e-6_beta003_steps50/checkpoint_evals/checkpoint-50_eval.summary.json",
+      "sha256": "1478a70f44ff720b3d9bb455bb33bff7771242aeb8c1543d67fe21192a49cf2b"
+    },
+    {
+      "path": "scripts/10_eval_stage2_model.py",
+      "sha256": "fca7645d0a0b80acb67310260ca350c9610d3e1d271819f20ff7f742cbccfc1a",
+      "verified_expression": "output_tokens = len(prediction.split())"
+    }
+  ]
+}
