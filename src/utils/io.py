@@ -39,9 +39,20 @@ def write_jsonl(path: str | Path, records: Iterable[dict[str, Any]]) -> None:
 
 
 def append_jsonl(path: str | Path, record: dict[str, Any]) -> None:
+    """Append one record, separating a complete final line without a newline.
+
+    This helper assumes a single writer; it does not repair truncated JSON.
+    """
+    payload = (json.dumps(record, ensure_ascii=False) + "\n").encode("utf-8")
     ensure_parent_dir(path)
-    with Path(path).open("a", encoding="utf-8") as f:
-        f.write(json.dumps(record, ensure_ascii=False) + "\n")
+    with Path(path).open("a+b") as f:
+        f.seek(0, 2)
+        if f.tell():
+            # Inspect a byte rather than seeking into a UTF-8 text stream.
+            f.seek(-1, 2)
+            if f.read(1) != b"\n":
+                f.write(b"\n")
+        f.write(payload)
         f.flush()
 
 
