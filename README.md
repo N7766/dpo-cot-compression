@@ -405,3 +405,5 @@ python -m unittest discover -s tests -v
 ```
 
 They test GSM8K/model answer extraction and JSONL reading/writing, including appending to complete records without a final newline. JSONL append assumes a single writer and does not repair truncated records.
+
+GitHub Actions runs these same checks on Python 3.11 and 3.13 for pull requests and pushes to `main`. The jobs use only the standard library, with no model downloads or inference calls; they do not validate training or model quality.

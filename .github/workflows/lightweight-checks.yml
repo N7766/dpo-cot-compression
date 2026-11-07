@@ -1,0 +1,31 @@
+name: Lightweight checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  sanity:
+    name: Python ${{ matrix.python-version }} sanity
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run JSONL regression tests without site packages
+        run: python -S -m unittest discover -s tests -v
+      - name: Run answer extraction and file IO self-test
+        run: python -S scripts/03_evaluate_generations.py --self_test
