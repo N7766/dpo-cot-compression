@@ -1,0 +1,48 @@
+name: Bug report
+description: Report a code failure with a small, reproducible example.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search existing issues and pull requests first. See [CONTRIBUTING.md](https://github.com/N7766/dpo-cot-compression/blob/main/CONTRIBUTING.md).
+        Share synthetic inputs and sanitized logs only. Do not include credentials, personal information, model weights, generated datasets, or raw generation outputs.
+  - type: input
+    id: revision
+    attributes:
+      label: Commit or branch
+      description: Prefer the commit SHA from git rev-parse HEAD.
+      placeholder: Commit SHA or branch name
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Relevant environment
+      description: Include Python, operating system, and relevant package versions. Mention GPU details only if they affect the failure; avoid full environment dumps.
+      placeholder: Python version, operating system, relevant package versions
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Give the exact command, configuration path or relevant settings, and a small synthetic input. State any prerequisites that prevent an offline reproduction.
+      placeholder: Steps, command, configuration, and synthetic input
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+      description: Explain the difference and include a sanitized traceback or output when available.
+      placeholder: "Expected: ...\nActual: ..."
+    validations:
+      required: true
+  - type: textarea
+    id: checks
+    attributes:
+      label: Checks performed and remaining limits
+      description: List commands actually run and their results. If a check was not run, write "not run" and explain why. GPU runs and paid inference are not required.
+      placeholder: Self-test result, smaller reproducer, or not run with reason
+    validations:
+      required: true

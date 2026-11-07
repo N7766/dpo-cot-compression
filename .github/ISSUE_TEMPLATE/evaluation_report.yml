@@ -1,0 +1,48 @@
+name: Evaluation or reproducibility report
+description: Report a metric discrepancy or document a reproducibility question.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check the [README](https://github.com/N7766/dpo-cot-compression/blob/main/README.md), [result boundaries](https://github.com/N7766/dpo-cot-compression/blob/main/docs/PORTFOLIO.md), and existing reports first.
+        Use synthetic inputs and sanitized summaries. Do not upload credentials, personal information, model weights, generated datasets, or raw generation outputs. Write "unknown" or "not run" where appropriate; new GPU runs or paid inference are not required.
+  - type: textarea
+    id: question
+    attributes:
+      label: Result or question
+      description: Link the reported result or source and explain the discrepancy or question. Distinguish an observed result from a proposed experiment.
+      placeholder: Source link, expected result, and observed result or question
+    validations:
+      required: true
+  - type: textarea
+    id: data
+    attributes:
+      label: Dataset and selection history
+      description: Identify dataset, split, subset IDs or selection rule, sample count, and whether this data influenced training or checkpoint selection. Say if any detail is unknown.
+      placeholder: Dataset / split / IDs or subset rule / count / selection use
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: Model and evaluation setup
+      description: Include repository commit, model and adapter revisions, relevant runtime versions, prompt or config path, decoding settings, and output cap. For an unrun proposal, identify the intended setup.
+      placeholder: Commit, model revisions, runtime, prompt, decoding, and cap
+    validations:
+      required: true
+  - type: textarea
+    id: metrics
+    attributes:
+      label: Metric definitions and comparison
+      description: Give metric names, units, and denominators. Distinguish whitespace-separated words from tokenizer completion tokens, and note incomplete outputs or cap hits where relevant.
+      placeholder: Metric, unit, denominator, observed values, and comparison limits
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Reproduction and verification status
+      description: Give exact commands and config paths, checks actually run and their outcomes, or "not run" with the missing prerequisites. Include only small synthetic examples or sanitized summaries.
+      placeholder: Commands / checks and results / unverified behavior or not run
+    validations:
+      required: true

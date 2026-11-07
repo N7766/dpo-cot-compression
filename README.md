@@ -404,3 +404,7 @@ python scripts/03_evaluate_generations.py --self_test
 ```
 
 They test GSM8K/model answer extraction and JSONL reading/writing.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for small reproducible bug reports, evaluation evidence, focused pull requests, and the lightweight validation command.
